@@ -104,8 +104,9 @@ def _get_access_token() -> str:
     return _refresh_access_token(token["refresh_token"])
 
 
-def authenticate_interactive() -> None:
-    """One-time OAuth flow. Works in any environment (no local server needed)."""
+def authenticate_print_url() -> None:
+    """Print the consent URL. User opens it, approves, copies the `code=`
+    value from the localhost redirect address bar."""
     client = _load_oauth_client()
     redirect_uri = "http://localhost:8080/"
     auth_url = f"{AUTH_URL}?" + urllib.parse.urlencode({
@@ -121,9 +122,16 @@ def authenticate_interactive() -> None:
     print()
     print("Google will redirect to a localhost URL that does NOT load — that's")
     print("expected. Copy the value of the `code=` query param from your")
-    print("browser's address bar (the long string between `code=` and `&scope=`).")
+    print("browser's address bar (between `code=` and `&scope=`).")
     print()
-    code = input("Paste the auth code here: ").strip()
+    print("Then run:")
+    print("  python -m reclaim.gmail_fetch auth-complete <paste-code-here>")
+
+
+def authenticate_exchange(code: str) -> None:
+    """Exchange the auth code for a refresh token."""
+    client = _load_oauth_client()
+    redirect_uri = "http://localhost:8080/"
     token = _post_form(TOKEN_URL, {
         "client_id": client["client_id"],
         "client_secret": client["client_secret"],
@@ -138,7 +146,7 @@ def authenticate_interactive() -> None:
             "and re-run."
         )
     _save_token({"refresh_token": token["refresh_token"]})
-    print(f"\nSaved refresh token to {TOKEN_PATH} (mode 600).")
+    print(f"Saved refresh token to {TOKEN_PATH} (mode 600).")
 
 
 # ----------------------------------------------------------- gmail fetching ---
@@ -317,14 +325,18 @@ def main(argv: list[str] | None = None) -> None:
         description=__doc__.splitlines()[0] if __doc__ else None,
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("auth", help="One-time OAuth setup.")
+    sub.add_parser("auth", help="Print the OAuth consent URL.")
+    c = sub.add_parser("auth-complete", help="Exchange the auth code for a refresh token.")
+    c.add_argument("code", help="The `code=` value from the localhost redirect.")
     t = sub.add_parser("thread", help="Fetch a Gmail thread by ID.")
     t.add_argument("thread_id")
     m = sub.add_parser("message", help="Fetch a single Gmail message by ID.")
     m.add_argument("message_id")
     args = parser.parse_args(argv)
     if args.cmd == "auth":
-        authenticate_interactive()
+        authenticate_print_url()
+    elif args.cmd == "auth-complete":
+        authenticate_exchange(args.code)
     elif args.cmd == "thread":
         cmd_thread(args.thread_id)
     elif args.cmd == "message":
