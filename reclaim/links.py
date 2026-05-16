@@ -141,7 +141,7 @@ def render_offers_html(
     title = meeting_title or f"Meeting with {host_name}"
     details = (
         f"Booked via {host_name}'s scheduling page. "
-        f"{host_name} will receive an invite when you save this event."
+        f"{host_name} will receive a calendar invite once you confirm this booking."
     )
     by_day: dict = defaultdict(list)
     for o in offers:
@@ -158,7 +158,10 @@ def render_offers_html(
             label = f"{o.slot.start:%-I:%M %p}"
             buttons.append(
                 f'<a class="slot" href="{html.escape(url)}" '
-                f'target="_blank" rel="noopener">{label}</a>'
+                f'target="_blank" rel="noopener">'
+                f'<span class="time">{label}</span>'
+                f'<span class="cta">Confirm</span>'
+                f'</a>'
             )
         day_blocks.append(
             f'<section class="day"><h2>{day:%A, %B %-d}</h2>'
@@ -190,11 +193,17 @@ def render_offers_html(
           padding: 1rem 1.25rem; margin-bottom: 1rem; }}
   .day h2 {{ font-size: 1rem; margin: 0 0 .75rem; color: #444; }}
   .slots {{ display: flex; flex-wrap: wrap; gap: .5rem; }}
-  a.slot {{ display: inline-block; padding: .55rem .9rem; background: #fff;
+  a.slot {{ display: inline-flex; align-items: center; gap: .5rem;
+            padding: .55rem .9rem; background: #fff;
             border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 6px;
             text-decoration: none; font-variant-numeric: tabular-nums;
             font-size: .95rem; transition: all .1s; }}
-  a.slot:hover {{ background: #3b82f6; color: #fff; }}
+  a.slot .time {{ font-weight: 500; }}
+  a.slot .cta  {{ font-size: .75rem; padding: .15rem .5rem; background: #3b82f6;
+                  color: #fff; border-radius: 4px; text-transform: uppercase;
+                  letter-spacing: .04em; }}
+  a.slot:hover {{ background: #eef4ff; }}
+  a.slot:hover .cta {{ background: #1d4ed8; }}
   .empty {{ background: #fff; padding: 2rem; border-radius: 8px; text-align: center;
             color: #666; border: 1px dashed #ccc; }}
   footer {{ color: #888; font-size: .75rem; margin-top: 2rem; text-align: center; }}
