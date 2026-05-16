@@ -7,6 +7,10 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from datetime import time as _time
+
+from reclaim.analytics import analyze
+from reclaim.links import generate_offers, render_offers
 from reclaim.models import Event, EventKind, TimeSlot
 from reclaim.plan import Planner
 from reclaim.preferences import load_habits, load_preferences, load_tasks
@@ -92,6 +96,65 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_links(args: argparse.Namespace) -> int:
+    prefs = load_preferences(args.prefs)
+    existing = _existing_events(Path(args.existing)) if args.existing else []
+    start, end = _resolve_horizon(args)
+    duration = timedelta(minutes=args.duration)
+    earliest = _time.fromisoformat(args.earliest) if args.earliest else None
+    latest = _time.fromisoformat(args.latest) if args.latest else None
+    weekdays = (
+        [int(x) for x in args.weekdays.split(",")] if args.weekdays else None
+    )
+    offers = generate_offers(
+        existing,
+        prefs,
+        duration,
+        start,
+        end,
+        limit=args.limit,
+        step=timedelta(minutes=args.step),
+        earliest=earliest,
+        latest=latest,
+        weekdays=weekdays,
+        spread=not args.no_spread,
+    )
+    print(render_offers(offers, tz=prefs.timezone))
+    if args.out:
+        Path(args.out).write_text(
+            json.dumps(
+                [
+                    {
+                        "start": o.slot.start.isoformat(),
+                        "end": o.slot.end.isoformat(),
+                        "label": o.label,
+                    }
+                    for o in offers
+                ],
+                indent=2,
+            )
+        )
+        print(f"\nWrote offers to {args.out}")
+    return 0
+
+
+def cmd_analyze(args: argparse.Namespace) -> int:
+    prefs = load_preferences(args.prefs)
+    existing = _existing_events(Path(args.existing)) if args.existing else []
+    start, end = _resolve_horizon(args)
+    if args.include_plan:
+        tasks = load_tasks(args.tasks) if Path(args.tasks).exists() else []
+        habits = load_habits(args.habits) if Path(args.habits).exists() else []
+        planner = Planner(prefs)
+        result = planner.plan(existing, tasks, habits, start, end)
+        events = existing + result.all_events
+    else:
+        events = existing
+    report = analyze(events, prefs, start, end)
+    print(report.render())
+    return 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     CONFIG_DIR.mkdir(exist_ok=True)
     # Copy defaults from package config if not present.
@@ -121,6 +184,31 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("--days", type=int, default=7)
     plan.add_argument("--out", default="", help="Write proposed events to JSON file")
     plan.set_defaults(func=cmd_plan)
+
+    links = sub.add_parser("links", help="Generate bookable scheduling-link slots")
+    links.add_argument("--prefs", default="config/preferences.yaml")
+    links.add_argument("--existing", default="", help="JSON file of existing calendar events")
+    links.add_argument("--start", default="", help="YYYY-MM-DD")
+    links.add_argument("--days", type=int, default=7)
+    links.add_argument("--duration", type=int, default=30, help="Slot duration in minutes")
+    links.add_argument("--step", type=int, default=30, help="Anchor step in minutes")
+    links.add_argument("--limit", type=int, default=8)
+    links.add_argument("--earliest", default="", help="Earliest time-of-day, e.g. 10:00")
+    links.add_argument("--latest", default="", help="Latest time-of-day, e.g. 16:00")
+    links.add_argument("--weekdays", default="", help="Comma list of weekday indices, Mon=0")
+    links.add_argument("--no-spread", action="store_true", help="Allow multiple offers per day")
+    links.add_argument("--out", default="", help="Write offers to JSON file")
+    links.set_defaults(func=cmd_links)
+
+    analyze_p = sub.add_parser("analyze", help="Weekly productivity report")
+    analyze_p.add_argument("--prefs", default="config/preferences.yaml")
+    analyze_p.add_argument("--tasks", default="config/tasks.yaml")
+    analyze_p.add_argument("--habits", default="config/habits.yaml")
+    analyze_p.add_argument("--existing", default="", help="JSON file of existing calendar events")
+    analyze_p.add_argument("--start", default="")
+    analyze_p.add_argument("--days", type=int, default=7)
+    analyze_p.add_argument("--include-plan", action="store_true", help="Also count planner output")
+    analyze_p.set_defaults(func=cmd_analyze)
 
     init = sub.add_parser("init", help="Bootstrap local config")
     init.set_defaults(func=cmd_init)
