@@ -14,6 +14,22 @@ You are running the Reclaim interview-ingest flow. Your job: find interview-rela
 
 ## Procedure
 
+0. **Enumerate Gmail accounts.** Run
+   `python -m reclaim.gmail_fetch accounts` to see which accounts are
+   configured. Loop through each one when searching + fetching. The
+   default account is named `default`; additional ones can be added
+   with `python -m reclaim.gmail_fetch auth --account <name>`. When a
+   thread is HTML-only, pass the same `--account` flag to the helper:
+   `python -m reclaim.gmail_fetch thread <id> --account <name>`.
+
+   Note: the Gmail MCP tool itself only reads the user's default Gmail
+   account (the one they authorized in the harness). To scan a
+   secondary account, use the Python helper for searches too:
+   `python -m reclaim.gmail_fetch search "<query>" --account <name>` if
+   the script supports it; otherwise tell the user that secondary
+   accounts are currently scanned via the helper for thread fetches
+   only, and the MCP search runs against their primary account.
+
 1. **Search Gmail.** Use this query (adjust newer_than as needed):
    ```
    (subject:interview OR "interview request" OR "schedule an interview"

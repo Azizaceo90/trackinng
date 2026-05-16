@@ -15,6 +15,12 @@ from reclaim.models import Event, EventKind, TimeSlot
 from reclaim.plan import Planner
 from reclaim.preferences import load_habits, load_preferences, load_tasks
 from reclaim.render import render_summary, render_week
+from reclaim.report import (
+    build_report,
+    load_events_json,
+    render_markdown,
+    resolve_window,
+)
 
 
 CONFIG_DIR = Path("config")
@@ -155,6 +161,15 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    anchor = date.fromisoformat(args.date) if args.date else date.today()
+    start, end = resolve_window(args.window, anchor)
+    events = load_events_json(Path(args.events))
+    report = build_report(events, start, end, args.window)
+    print(render_markdown(report))
+    return 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     CONFIG_DIR.mkdir(exist_ok=True)
     # Copy defaults from package config if not present.
@@ -209,6 +224,21 @@ def main(argv: list[str] | None = None) -> int:
     analyze_p.add_argument("--days", type=int, default=7)
     analyze_p.add_argument("--include-plan", action="store_true", help="Also count planner output")
     analyze_p.set_defaults(func=cmd_analyze)
+
+    report_p = sub.add_parser("report", help="Markdown time-report dashboard")
+    report_p.add_argument(
+        "--window", default="week", choices=["day", "week", "month"],
+        help="Time window (default: week).",
+    )
+    report_p.add_argument(
+        "--date", default="",
+        help="Anchor date YYYY-MM-DD (defaults to today).",
+    )
+    report_p.add_argument(
+        "--events", default="config/calendar_events.json",
+        help="JSON file of calendar events (default: config/calendar_events.json).",
+    )
+    report_p.set_defaults(func=cmd_report)
 
     init = sub.add_parser("init", help="Bootstrap local config")
     init.set_defaults(func=cmd_init)

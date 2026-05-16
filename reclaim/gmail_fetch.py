@@ -39,7 +39,8 @@ CONFIG_DIR = Path(
     os.environ.get("RECLAIM_CONFIG_DIR", Path.home() / ".config" / "reclaim")
 )
 CRED_PATH = CONFIG_DIR / "gmail_credentials.json"
-TOKEN_PATH = CONFIG_DIR / "gmail_token.json"
+TOKENS_DIR = CONFIG_DIR / "tokens"
+LEGACY_TOKEN_PATH = CONFIG_DIR / "gmail_token.json"
 
 SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -61,16 +62,34 @@ def _load_oauth_client() -> dict:
     return {"client_id": inner["client_id"], "client_secret": inner["client_secret"]}
 
 
-def _save_token(token: dict) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    TOKEN_PATH.write_text(json.dumps(token, indent=2))
-    TOKEN_PATH.chmod(0o600)
+def _token_path(account: str) -> Path:
+    return TOKENS_DIR / f"{account}.json"
 
 
-def _load_token() -> dict | None:
-    if not TOKEN_PATH.exists():
-        return None
-    return json.loads(TOKEN_PATH.read_text())
+def _save_token(token: dict, account: str = "default") -> None:
+    TOKENS_DIR.mkdir(parents=True, exist_ok=True)
+    p = _token_path(account)
+    p.write_text(json.dumps(token, indent=2))
+    p.chmod(0o600)
+
+
+def _load_token(account: str = "default") -> dict | None:
+    p = _token_path(account)
+    if p.exists():
+        return json.loads(p.read_text())
+    # One-time migration from the pre-multi-account layout.
+    if account == "default" and LEGACY_TOKEN_PATH.exists():
+        token = json.loads(LEGACY_TOKEN_PATH.read_text())
+        _save_token(token, "default")
+        LEGACY_TOKEN_PATH.unlink()
+        return token
+    return None
+
+
+def list_accounts() -> list[str]:
+    if not TOKENS_DIR.exists():
+        return []
+    return sorted(p.stem for p in TOKENS_DIR.glob("*.json"))
 
 
 def _post_form(url: str, data: dict) -> dict:
@@ -94,12 +113,12 @@ def _refresh_access_token(refresh_token: str) -> str:
     return out["access_token"]
 
 
-def _get_access_token() -> str:
-    token = _load_token()
+def _get_access_token(account: str = "default") -> str:
+    token = _load_token(account)
     if not token or "refresh_token" not in token:
         sys.exit(
-            f"No refresh token at {TOKEN_PATH}.\n"
-            "Run `python -m reclaim.gmail_fetch auth` first."
+            f"No refresh token for account {account!r} at {_token_path(account)}.\n"
+            f"Run `python -m reclaim.gmail_fetch auth --account {account}` first."
         )
     return _refresh_access_token(token["refresh_token"])
 
@@ -128,7 +147,7 @@ def authenticate_print_url() -> None:
     print("  python -m reclaim.gmail_fetch auth-complete <paste-code-here>")
 
 
-def authenticate_exchange(code: str) -> None:
+def authenticate_exchange(code: str, account: str = "default") -> None:
     """Exchange the auth code for a refresh token."""
     client = _load_oauth_client()
     redirect_uri = "http://localhost"
@@ -145,8 +164,8 @@ def authenticate_exchange(code: str) -> None:
             "Revoke prior consent at https://myaccount.google.com/permissions "
             "and re-run."
         )
-    _save_token({"refresh_token": token["refresh_token"]})
-    print(f"Saved refresh token to {TOKEN_PATH} (mode 600).")
+    _save_token({"refresh_token": token["refresh_token"]}, account)
+    print(f"Saved refresh token for account {account!r} to {_token_path(account)} (mode 600).")
 
 
 # ----------------------------------------------------------- gmail fetching ---
@@ -176,6 +195,33 @@ def fetch_thread_messages(thread_id: str, access_token: str) -> list[Message]:
         f"/users/me/threads/{thread_id}", access_token, {"format": "minimal"}
     )
     return [fetch_raw_message(m["id"], access_token) for m in thread.get("messages", [])]
+
+
+def search_threads(query: str, access_token: str, max_results: int = 25) -> list[dict]:
+    """Search Gmail threads. Returns minimal thread metadata (id + snippet)."""
+    out = _api_get(
+        "/users/me/threads", access_token,
+        {"q": query, "maxResults": str(max_results)},
+    )
+    threads = out.get("threads", [])
+    detailed = []
+    for t in threads:
+        full = _api_get(
+            f"/users/me/threads/{t['id']}", access_token,
+            {"format": "metadata", "metadataHeaders": "From,Subject,Date"},
+        )
+        msgs = full.get("messages", [])
+        first = msgs[0] if msgs else {}
+        headers = {h["name"]: h["value"] for h in first.get("payload", {}).get("headers", [])}
+        detailed.append({
+            "thread_id": t["id"],
+            "snippet": t.get("snippet", ""),
+            "message_count": len(msgs),
+            "from": headers.get("From", ""),
+            "subject": headers.get("Subject", ""),
+            "date": headers.get("Date", ""),
+        })
+    return detailed
 
 
 # -------------------------------------------------------------- html → text ---
@@ -301,10 +347,11 @@ def summarize_message(msg: Message) -> dict:
 # ---------------------------------------------------------- CLI entrypoints ---
 
 
-def cmd_thread(thread_id: str) -> None:
-    access = _get_access_token()
+def cmd_thread(thread_id: str, account: str = "default") -> None:
+    access = _get_access_token(account)
     messages = fetch_thread_messages(thread_id, access)
     payload = {
+        "account": account,
         "thread_id": thread_id,
         "messages": [summarize_message(m) for m in messages],
     }
@@ -312,11 +359,30 @@ def cmd_thread(thread_id: str) -> None:
     sys.stdout.write("\n")
 
 
-def cmd_message(message_id: str) -> None:
-    access = _get_access_token()
+def cmd_message(message_id: str, account: str = "default") -> None:
+    access = _get_access_token(account)
     msg = fetch_raw_message(message_id, access)
-    json.dump(summarize_message(msg), sys.stdout, indent=2, default=str)
+    payload = summarize_message(msg)
+    payload["account"] = account
+    json.dump(payload, sys.stdout, indent=2, default=str)
     sys.stdout.write("\n")
+
+
+def cmd_search(query: str, account: str = "default", max_results: int = 25) -> None:
+    access = _get_access_token(account)
+    threads = search_threads(query, access, max_results)
+    json.dump({"account": account, "query": query, "threads": threads},
+              sys.stdout, indent=2, default=str)
+    sys.stdout.write("\n")
+
+
+def cmd_accounts() -> None:
+    accounts = list_accounts()
+    if not accounts:
+        print("(no accounts configured — run `python -m reclaim.gmail_fetch auth`)")
+        return
+    for a in accounts:
+        print(a)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -325,22 +391,44 @@ def main(argv: list[str] | None = None) -> None:
         description=__doc__.splitlines()[0] if __doc__ else None,
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("auth", help="Print the OAuth consent URL.")
-    c = sub.add_parser("auth-complete", help="Exchange the auth code for a refresh token.")
+
+    auth_p = sub.add_parser("auth", help="Print the OAuth consent URL.")
+    auth_p.add_argument("--account", default="default",
+                        help="Account name to authorize (default: 'default').")
+
+    c = sub.add_parser("auth-complete",
+                       help="Exchange the auth code for a refresh token.")
     c.add_argument("code", help="The `code=` value from the localhost redirect.")
+    c.add_argument("--account", default="default")
+
     t = sub.add_parser("thread", help="Fetch a Gmail thread by ID.")
     t.add_argument("thread_id")
+    t.add_argument("--account", default="default")
+
     m = sub.add_parser("message", help="Fetch a single Gmail message by ID.")
     m.add_argument("message_id")
+    m.add_argument("--account", default="default")
+
+    s = sub.add_parser("search", help="Search Gmail threads by query.")
+    s.add_argument("query")
+    s.add_argument("--account", default="default")
+    s.add_argument("--max-results", type=int, default=25)
+
+    sub.add_parser("accounts", help="List configured Gmail accounts.")
+
     args = parser.parse_args(argv)
     if args.cmd == "auth":
         authenticate_print_url()
     elif args.cmd == "auth-complete":
-        authenticate_exchange(args.code)
+        authenticate_exchange(args.code, args.account)
     elif args.cmd == "thread":
-        cmd_thread(args.thread_id)
+        cmd_thread(args.thread_id, args.account)
     elif args.cmd == "message":
-        cmd_message(args.message_id)
+        cmd_message(args.message_id, args.account)
+    elif args.cmd == "search":
+        cmd_search(args.query, args.account, args.max_results)
+    elif args.cmd == "accounts":
+        cmd_accounts()
 
 
 if __name__ == "__main__":

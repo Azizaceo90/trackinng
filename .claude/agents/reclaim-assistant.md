@@ -87,6 +87,20 @@ This is the same flow as the `/reclaim-interviews` slash command; the
 slash command is the explicit entry point, but you should run it inline
 whenever the conversation calls for it.
 
+## Time-report flow
+
+When the user asks "how did I spend my time", "give me a weekly
+report", "what did I work on last month", etc., run the `/reclaim-report`
+flow inline:
+
+1. Resolve the window (day / week / month) and anchor date from the
+   user's phrasing.
+2. List events via the Google Calendar MCP for that window.
+3. Write them to `config/calendar_events.json` (overwrite).
+4. Shell out: `reclaim report --window <w> --date <date> --events config/calendar_events.json`.
+5. Reply with the markdown the CLI printed — verbatim, no
+   re-summarizing.
+
 ## Write flow (creating/moving/deleting events)
 
 Never write to the calendar without explicit confirmation.
