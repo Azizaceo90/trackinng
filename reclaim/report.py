@@ -295,7 +295,7 @@ def render_html(report: Report) -> str:
 </head>
 <body>
   <h1>Time report — {report.window_label}</h1>
-  <div class="sub">{report.start:%a %b %-d} → {report.end:%a %b %-d, %Y}</div>
+  <div class="sub">{report.start:%a %b %-d} → {report.end:%a %b %-d, %Y} · <a href="book.html">Book time with me →</a></div>
 
   <div class="stats">
     <div class="stat"><div class="v">{_fmt_h(grand)}</div><div class="l">Tracked</div></div>
