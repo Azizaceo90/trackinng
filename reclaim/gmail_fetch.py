@@ -108,7 +108,7 @@ def authenticate_print_url() -> None:
     """Print the consent URL. User opens it, approves, copies the `code=`
     value from the localhost redirect address bar."""
     client = _load_oauth_client()
-    redirect_uri = "http://localhost:8080/"
+    redirect_uri = "http://localhost"
     auth_url = f"{AUTH_URL}?" + urllib.parse.urlencode({
         "client_id": client["client_id"],
         "redirect_uri": redirect_uri,
@@ -131,7 +131,7 @@ def authenticate_print_url() -> None:
 def authenticate_exchange(code: str) -> None:
     """Exchange the auth code for a refresh token."""
     client = _load_oauth_client()
-    redirect_uri = "http://localhost:8080/"
+    redirect_uri = "http://localhost"
     token = _post_form(TOKEN_URL, {
         "client_id": client["client_id"],
         "client_secret": client["client_secret"],
