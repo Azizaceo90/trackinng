@@ -18,6 +18,7 @@ from reclaim.render import render_summary, render_week
 from reclaim.report import (
     build_report,
     load_events_json,
+    render_html,
     render_markdown,
     resolve_window,
 )
@@ -166,7 +167,14 @@ def cmd_report(args: argparse.Namespace) -> int:
     start, end = resolve_window(args.window, anchor)
     events = load_events_json(Path(args.events))
     report = build_report(events, start, end, args.window)
-    print(render_markdown(report))
+    rendered = render_html(report) if args.format == "html" else render_markdown(report)
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered)
+        print(f"Wrote {out_path}")
+    else:
+        print(rendered)
     return 0
 
 
@@ -237,6 +245,14 @@ def main(argv: list[str] | None = None) -> int:
     report_p.add_argument(
         "--events", default="config/calendar_events.json",
         help="JSON file of calendar events (default: config/calendar_events.json).",
+    )
+    report_p.add_argument(
+        "--format", default="markdown", choices=["markdown", "html"],
+        help="Output format (default: markdown).",
+    )
+    report_p.add_argument(
+        "--out", default="",
+        help="Write to a file instead of stdout (path, e.g. docs/index.html).",
     )
     report_p.set_defaults(func=cmd_report)
 

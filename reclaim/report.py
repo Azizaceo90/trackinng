@@ -209,6 +209,135 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def render_html(report: Report) -> str:
+    """Self-contained HTML dashboard. Chart.js is pulled from a CDN.
+
+    Designed to be committed to docs/index.html and served by GitHub
+    Pages. The whole page is one file — no build step, no dependencies.
+    """
+    import json
+    cats = CATEGORIES
+    totals = report.total_hours
+    grand = sum(totals.values())
+    focus = totals["Focus"]
+    meet = totals["Meetings"] + totals["Interviews"]
+    deep_share = (focus / grand * 100) if grand else 0
+    meet_share = (meet / grand * 100) if grand else 0
+    busiest = max(report.days, key=lambda d: d.total_hours, default=None)
+    deepest = max(report.days, key=lambda d: d.longest_focus, default=None)
+
+    chart_labels = [f"{d.day:%a %m/%d}" for d in report.days]
+    chart_datasets = []
+    palette = {
+        "Focus":      "#22c55e",
+        "Meetings":   "#3b82f6",
+        "Interviews": "#ef4444",
+        "Habits":     "#a855f7",
+        "Tasks":      "#f59e0b",
+        "Buffers":    "#6b7280",
+        "Other":      "#9ca3af",
+    }
+    for c in cats:
+        chart_datasets.append({
+            "label": c,
+            "backgroundColor": palette[c],
+            "data": [round(d.hours[c], 2) for d in report.days],
+        })
+
+    rows = []
+    for d in report.days:
+        cells = [f"<td>{d.day:%a %m/%d}</td>"]
+        for c in cats:
+            cells.append(f"<td>{_fmt_h(d.hours[c])}</td>")
+        cells.append(f"<td><strong>{_fmt_h(d.total_hours)}</strong></td>")
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+    total_cells = ["<td><strong>Total</strong></td>"]
+    for c in cats:
+        total_cells.append(f"<td><strong>{_fmt_h(totals[c])}</strong></td>")
+    total_cells.append(f"<td><strong>{_fmt_h(grand)}</strong></td>")
+    rows.append('<tr class="total">' + "".join(total_cells) + "</tr>")
+
+    header_cells = "".join(f"<th>{c}</th>" for c in cats)
+    rendered_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time report — {report.start} → {report.end}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body {{ font: 14px -apple-system, system-ui, sans-serif;
+         max-width: 1000px; margin: 2rem auto; padding: 0 1rem;
+         color: #111; background: #fafafa; }}
+  h1 {{ font-size: 1.4rem; margin: 0 0 .25rem; }}
+  .sub {{ color: #666; margin-bottom: 1.5rem; }}
+  .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+            gap: .75rem; margin-bottom: 1.5rem; }}
+  .stat {{ background: white; padding: .75rem 1rem; border-radius: 8px;
+           border: 1px solid #e5e5e5; }}
+  .stat .v {{ font-size: 1.5rem; font-weight: 600; }}
+  .stat .l {{ font-size: .75rem; color: #666; text-transform: uppercase;
+              letter-spacing: .05em; }}
+  canvas {{ background: white; border: 1px solid #e5e5e5; border-radius: 8px;
+            padding: 1rem; margin-bottom: 1.5rem; }}
+  table {{ width: 100%; border-collapse: collapse; background: white;
+           border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }}
+  th, td {{ padding: .5rem .75rem; text-align: right; border-bottom: 1px solid #f0f0f0;
+            font-variant-numeric: tabular-nums; }}
+  th:first-child, td:first-child {{ text-align: left; }}
+  th {{ background: #f5f5f5; font-weight: 600; font-size: .8rem;
+        text-transform: uppercase; letter-spacing: .03em; color: #555; }}
+  tr.total td {{ background: #f9fafb; border-top: 2px solid #e5e5e5; }}
+  footer {{ color: #999; font-size: .75rem; margin-top: 2rem; text-align: center; }}
+</style>
+</head>
+<body>
+  <h1>Time report — {report.window_label}</h1>
+  <div class="sub">{report.start:%a %b %-d} → {report.end:%a %b %-d, %Y}</div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">{_fmt_h(grand)}</div><div class="l">Tracked</div></div>
+    <div class="stat"><div class="v">{report.total_interviews}</div><div class="l">Interviews</div></div>
+    <div class="stat"><div class="v">{_fmt_h(focus)}</div><div class="l">Focus</div></div>
+    <div class="stat"><div class="v">{deep_share:.0f}%</div><div class="l">Deep-work share</div></div>
+    <div class="stat"><div class="v">{meet_share:.0f}%</div><div class="l">Meeting load</div></div>
+    <div class="stat"><div class="v">{busiest.day:%a %m/%d}</div><div class="l">Busiest day</div></div>
+  </div>
+
+  <canvas id="chart" height="120"></canvas>
+
+  <table>
+    <thead><tr><th>Day</th>{header_cells}<th>Total</th></tr></thead>
+    <tbody>{"".join(rows)}</tbody>
+  </table>
+
+  <footer>Generated {rendered_at} · <code>reclaim report --format html</code></footer>
+
+<script>
+const ctx = document.getElementById('chart').getContext('2d');
+new Chart(ctx, {{
+  type: 'bar',
+  data: {{
+    labels: {json.dumps(chart_labels)},
+    datasets: {json.dumps(chart_datasets)}
+  }},
+  options: {{
+    responsive: true,
+    plugins: {{ legend: {{ position: 'bottom' }}, title: {{ display: false }} }},
+    scales: {{
+      x: {{ stacked: true }},
+      y: {{ stacked: true, title: {{ display: true, text: 'Hours' }} }}
+    }}
+  }}
+}});
+</script>
+</body>
+</html>
+"""
+
+
 def render_markdown(report: Report) -> str:
     title = (
         f"# Time report — {report.window_label} "

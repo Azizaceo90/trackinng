@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time report — 2026-05-11 → 2026-05-17</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font: 14px -apple-system, system-ui, sans-serif;
+         max-width: 1000px; margin: 2rem auto; padding: 0 1rem;
+         color: #111; background: #fafafa; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  .sub { color: #666; margin-bottom: 1.5rem; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+            gap: .75rem; margin-bottom: 1.5rem; }
+  .stat { background: white; padding: .75rem 1rem; border-radius: 8px;
+           border: 1px solid #e5e5e5; }
+  .stat .v { font-size: 1.5rem; font-weight: 600; }
+  .stat .l { font-size: .75rem; color: #666; text-transform: uppercase;
+              letter-spacing: .05em; }
+  canvas { background: white; border: 1px solid #e5e5e5; border-radius: 8px;
+            padding: 1rem; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; background: white;
+           border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; }
+  th, td { padding: .5rem .75rem; text-align: right; border-bottom: 1px solid #f0f0f0;
+            font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; font-size: .8rem;
+        text-transform: uppercase; letter-spacing: .03em; color: #555; }
+  tr.total td { background: #f9fafb; border-top: 2px solid #e5e5e5; }
+  footer { color: #999; font-size: .75rem; margin-top: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>Time report — week</h1>
+  <div class="sub">Mon May 11 → Sun May 17, 2026</div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">3.6h</div><div class="l">Tracked</div></div>
+    <div class="stat"><div class="v">7</div><div class="l">Interviews</div></div>
+    <div class="stat"><div class="v">—</div><div class="l">Focus</div></div>
+    <div class="stat"><div class="v">0%</div><div class="l">Deep-work share</div></div>
+    <div class="stat"><div class="v">100%</div><div class="l">Meeting load</div></div>
+    <div class="stat"><div class="v">Thu 05/14</div><div class="l">Busiest day</div></div>
+  </div>
+
+  <canvas id="chart" height="120"></canvas>
+
+  <table>
+    <thead><tr><th>Day</th><th>Focus</th><th>Meetings</th><th>Interviews</th><th>Habits</th><th>Tasks</th><th>Buffers</th><th>Other</th><th>Total</th></tr></thead>
+    <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>0.2h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.2h</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>0.5h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.5h</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>0.5h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.5h</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>2.3h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>2.3h</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>3.6h</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>3.6h</strong></td></tr></tbody>
+  </table>
+
+  <footer>Generated 2026-05-16 20:23 · <code>reclaim report --format html</code></footer>
+
+<script>
+const ctx = document.getElementById('chart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ["Mon 05/11", "Tue 05/12", "Wed 05/13", "Thu 05/14", "Fri 05/15", "Sat 05/16", "Sun 05/17"],
+    datasets: [{"label": "Focus", "backgroundColor": "#22c55e", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Meetings", "backgroundColor": "#3b82f6", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Interviews", "backgroundColor": "#ef4444", "data": [0.25, 0.5, 0.5, 2.33, 0.0, 0.0, 0.0]}, {"label": "Habits", "backgroundColor": "#a855f7", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Tasks", "backgroundColor": "#f59e0b", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Buffers", "backgroundColor": "#6b7280", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Other", "backgroundColor": "#9ca3af", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' }, title: { display: false } },
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, title: { display: true, text: 'Hours' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
