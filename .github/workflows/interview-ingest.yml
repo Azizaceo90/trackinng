@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "30 */2 * * *"  # every 2 hours, 30 min past the hour
   workflow_dispatch: {}      # also runnable manually from the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - "reclaim/**"
+      - ".github/workflows/interview-ingest.yml"
 
 permissions:
   contents: read
