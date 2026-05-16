@@ -1,0 +1,58 @@
+name: Interview ingest
+
+on:
+  schedule:
+    - cron: "30 */2 * * *"  # every 2 hours, 30 min past the hour
+  workflow_dispatch: {}      # also runnable manually from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: interview-ingest
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reclaim
+        run: pip install -e .
+
+      - name: Materialize OAuth credentials from secrets
+        env:
+          GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          CALENDAR_REFRESH_TOKEN: ${{ secrets.CALENDAR_REFRESH_TOKEN }}
+        run: |
+          mkdir -p "$HOME/.config/reclaim/tokens"
+          printf '%s' "$GOOGLE_OAUTH_CLIENT" > "$HOME/.config/reclaim/gmail_credentials.json"
+          printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN" \
+            > "$HOME/.config/reclaim/tokens/default.json"
+          printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN" \
+            > "$HOME/.config/reclaim/tokens/calendar-default.json"
+          chmod 600 "$HOME/.config/reclaim/tokens/"*.json
+          chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
+
+      - name: Scan Gmail and create interview events
+        run: |
+          python -m reclaim.interviews scan --days 14 \
+            | tee report.json
+          echo "---"
+          python -c "import json; r=json.load(open('report.json')); \
+            print(f\"Created: {len(r['created'])}, skipped: {len(r['skipped'])}, \
+threads examined: {r['threads_examined']}\")"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ingest-report
+          path: report.json
+          retention-days: 14
