@@ -43,12 +43,9 @@ jobs:
 
       - name: Scan Gmail and create interview events
         run: |
-          python -m reclaim.interviews scan --days 14 \
-            | tee report.json
-          echo "---"
-          python -c "import json; r=json.load(open('report.json')); \
-            print(f\"Created: {len(r['created'])}, skipped: {len(r['skipped'])}, \
-threads examined: {r['threads_examined']}\")"
+          python -m reclaim.interviews scan --days 14 > report.json
+          echo "--- Summary ---"
+          python -m json.tool report.json | head -20
 
       - uses: actions/upload-artifact@v4
         if: always()
