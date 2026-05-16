@@ -1,5 +1,5 @@
 # Standard knowledge-worker defaults. Tune to taste; run `reclaim plan` after.
-timezone: UTC
+timezone: America/Detroit
 
 # Working hours per weekday. Leave a day out to mark it off-hours.
 working_hours:

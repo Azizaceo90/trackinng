@@ -7,29 +7,51 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from datetime import time as _time
+
+from reclaim.analytics import analyze
+from reclaim.links import generate_offers, render_offers, render_offers_html
 from reclaim.models import Event, EventKind, TimeSlot
 from reclaim.plan import Planner
 from reclaim.preferences import load_habits, load_preferences, load_tasks
 from reclaim.render import render_summary, render_week
+from reclaim.report import (
+    build_report,
+    load_events_json,
+    render_html,
+    render_markdown,
+    resolve_window,
+)
 
 
 CONFIG_DIR = Path("config")
 
 
 def _existing_events(path: Path) -> list[Event]:
+    """Load events from a JSON file.
+
+    Accepts both the planner's native shape ({title, start, end}) and
+    Google Calendar's MCP shape ({summary, start.dateTime, end.dateTime}).
+    """
     if not path.exists():
         return []
     raw = json.loads(path.read_text())
     out: list[Event] = []
     for e in raw:
+        title = e.get("title") or e.get("summary") or ""
+        start = _parse_dt(e.get("start"))
+        end = _parse_dt(e.get("end"))
+        if not (title and start and end and end > start):
+            continue
+        try:
+            kind = EventKind(e.get("kind", "meeting"))
+        except ValueError:
+            kind = EventKind.MEETING
         out.append(
             Event(
-                title=e["title"],
-                slot=TimeSlot(
-                    datetime.fromisoformat(e["start"]),
-                    datetime.fromisoformat(e["end"]),
-                ),
-                kind=EventKind(e.get("kind", "meeting")),
+                title=title,
+                slot=TimeSlot(start, end),
+                kind=kind,
                 calendar_id=e.get("calendar_id"),
                 source_id=e.get("id"),
                 movable=e.get("movable", False),
@@ -37,6 +59,23 @@ def _existing_events(path: Path) -> list[Event]:
             )
         )
     return out
+
+
+def _parse_dt(value) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    if isinstance(value, dict):
+        value = value.get("dateTime") or value.get("date")
+        if value is None:
+            return None
+    s = str(value).replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=None)
 
 
 def _events_to_json(events: list[Event]) -> str:
@@ -92,6 +131,103 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_links(args: argparse.Namespace) -> int:
+    prefs = load_preferences(args.prefs)
+    existing = _existing_events(Path(args.existing)) if args.existing else []
+    start, end = _resolve_horizon(args)
+    duration = timedelta(minutes=args.duration)
+    earliest = _time.fromisoformat(args.earliest) if args.earliest else None
+    latest = _time.fromisoformat(args.latest) if args.latest else None
+    weekdays = (
+        [int(x) for x in args.weekdays.split(",")] if args.weekdays else None
+    )
+    offers = generate_offers(
+        existing,
+        prefs,
+        duration,
+        start,
+        end,
+        limit=args.limit,
+        step=timedelta(minutes=args.step),
+        earliest=earliest,
+        latest=latest,
+        weekdays=weekdays,
+        spread=not args.no_spread,
+    )
+    if args.format == "html":
+        if not (args.host_name and args.host_email):
+            print("ERROR: --host-name and --host-email are required for --format html",
+                  file=sys.stderr)
+            return 2
+        html = render_offers_html(
+            offers,
+            tz=prefs.timezone,
+            host_name=args.host_name,
+            host_email=args.host_email,
+            duration_min=args.duration,
+            host_blurb=args.host_blurb,
+        )
+        if args.out:
+            out_path = Path(args.out)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(html)
+            print(f"Wrote {out_path}")
+        else:
+            print(html)
+        return 0
+
+    print(render_offers(offers, tz=prefs.timezone))
+    if args.out:
+        Path(args.out).write_text(
+            json.dumps(
+                [
+                    {
+                        "start": o.slot.start.isoformat(),
+                        "end": o.slot.end.isoformat(),
+                        "label": o.label,
+                    }
+                    for o in offers
+                ],
+                indent=2,
+            )
+        )
+        print(f"\nWrote offers to {args.out}")
+    return 0
+
+
+def cmd_analyze(args: argparse.Namespace) -> int:
+    prefs = load_preferences(args.prefs)
+    existing = _existing_events(Path(args.existing)) if args.existing else []
+    start, end = _resolve_horizon(args)
+    if args.include_plan:
+        tasks = load_tasks(args.tasks) if Path(args.tasks).exists() else []
+        habits = load_habits(args.habits) if Path(args.habits).exists() else []
+        planner = Planner(prefs)
+        result = planner.plan(existing, tasks, habits, start, end)
+        events = existing + result.all_events
+    else:
+        events = existing
+    report = analyze(events, prefs, start, end)
+    print(report.render())
+    return 0
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    anchor = date.fromisoformat(args.date) if args.date else date.today()
+    start, end = resolve_window(args.window, anchor)
+    events = load_events_json(Path(args.events))
+    report = build_report(events, start, end, args.window)
+    rendered = render_html(report) if args.format == "html" else render_markdown(report)
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered)
+        print(f"Wrote {out_path}")
+    else:
+        print(rendered)
+    return 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     CONFIG_DIR.mkdir(exist_ok=True)
     # Copy defaults from package config if not present.
@@ -121,6 +257,59 @@ def main(argv: list[str] | None = None) -> int:
     plan.add_argument("--days", type=int, default=7)
     plan.add_argument("--out", default="", help="Write proposed events to JSON file")
     plan.set_defaults(func=cmd_plan)
+
+    links = sub.add_parser("links", help="Generate bookable scheduling-link slots")
+    links.add_argument("--prefs", default="config/preferences.yaml")
+    links.add_argument("--existing", default="", help="JSON file of existing calendar events")
+    links.add_argument("--start", default="", help="YYYY-MM-DD")
+    links.add_argument("--days", type=int, default=7)
+    links.add_argument("--duration", type=int, default=30, help="Slot duration in minutes")
+    links.add_argument("--step", type=int, default=30, help="Anchor step in minutes")
+    links.add_argument("--limit", type=int, default=8)
+    links.add_argument("--earliest", default="", help="Earliest time-of-day, e.g. 10:00")
+    links.add_argument("--latest", default="", help="Latest time-of-day, e.g. 16:00")
+    links.add_argument("--weekdays", default="", help="Comma list of weekday indices, Mon=0")
+    links.add_argument("--no-spread", action="store_true", help="Allow multiple offers per day")
+    links.add_argument("--out", default="", help="Write offers (JSON or HTML, see --format) to file")
+    links.add_argument("--format", default="text", choices=["text", "json", "html"],
+                       help="Output format (default: text)")
+    links.add_argument("--host-name", default="", help="Display name for HTML page")
+    links.add_argument("--host-email", default="", help="Host email (set as invitee on bookings)")
+    links.add_argument("--host-blurb", default="", help="Optional one-line note shown on the booking page")
+    links.set_defaults(func=cmd_links)
+
+    analyze_p = sub.add_parser("analyze", help="Weekly productivity report")
+    analyze_p.add_argument("--prefs", default="config/preferences.yaml")
+    analyze_p.add_argument("--tasks", default="config/tasks.yaml")
+    analyze_p.add_argument("--habits", default="config/habits.yaml")
+    analyze_p.add_argument("--existing", default="", help="JSON file of existing calendar events")
+    analyze_p.add_argument("--start", default="")
+    analyze_p.add_argument("--days", type=int, default=7)
+    analyze_p.add_argument("--include-plan", action="store_true", help="Also count planner output")
+    analyze_p.set_defaults(func=cmd_analyze)
+
+    report_p = sub.add_parser("report", help="Markdown time-report dashboard")
+    report_p.add_argument(
+        "--window", default="week", choices=["day", "week", "month"],
+        help="Time window (default: week).",
+    )
+    report_p.add_argument(
+        "--date", default="",
+        help="Anchor date YYYY-MM-DD (defaults to today).",
+    )
+    report_p.add_argument(
+        "--events", default="config/calendar_events.json",
+        help="JSON file of calendar events (default: config/calendar_events.json).",
+    )
+    report_p.add_argument(
+        "--format", default="markdown", choices=["markdown", "html"],
+        help="Output format (default: markdown).",
+    )
+    report_p.add_argument(
+        "--out", default="",
+        help="Write to a file instead of stdout (path, e.g. docs/index.html).",
+    )
+    report_p.set_defaults(func=cmd_report)
 
     init = sub.add_parser("init", help="Bootstrap local config")
     init.set_defaults(func=cmd_init)

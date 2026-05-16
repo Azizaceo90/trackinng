@@ -11,3 +11,8 @@ dist/
 config/preferences.local.yaml
 config/tasks.local.yaml
 config/habits.local.yaml
+# Never commit Gmail OAuth artifacts (refresh token = full read access to inbox).
+gmail_credentials.json
+gmail_token.json
+# Calendar dump used by `reclaim report`; regenerated every run.
+config/calendar_events.json
