@@ -49,9 +49,21 @@ You are running the Reclaim interview-ingest flow. Your job: find interview-rela
    - **Dial-in**: phone number + access code if a phone-only option is included
    - The Gmail thread ID (for traceability)
 
-   If the email is HTML-only and no `plaintextBody` is returned, say so in the
-   summary — do NOT fabricate a link. Suggest the user check the email or ask
-   the recruiter for the link.
+   If the email is HTML-only and `get_thread` returns no `plaintextBody`,
+   **fall back to the local Gmail-API helper** before giving up:
+
+   ```bash
+   python -m reclaim.gmail_fetch thread <threadId>
+   ```
+
+   The helper hits Gmail's HTTP API directly with the user's own OAuth
+   refresh token, decodes the HTML body, and emits a JSON `meeting`
+   block with `join_url`, `meeting_id`, `passcode`, `conference_id`, and
+   `dial_in`. Use those values as if they came from `plaintextBody`.
+
+   If the helper itself errors out with "Missing OAuth client config" or
+   "No refresh token", point the user at `reclaim/GMAIL_SETUP.md` —
+   that's a one-time setup, not something to retry around.
 
 5. **Show the user a clean summary** of what you'd create:
    ```

@@ -53,8 +53,12 @@ calendar.
    (Teams `teams.microsoft.com/...`, Meet `meet.google.com/...`, Zoom
    `*.zoom.us/j/...`), **Meeting ID** ("Meeting ID:" / "Conference ID:"),
    **Passcode** ("Passcode:" / "Password:" / `?pwd=` query param), and
-   dial-in phone number. If the body is HTML-only and no plaintext is
-   returned, mark these fields "not provided in email" — never fabricate.
+   dial-in phone number. If the body is HTML-only and `get_thread`
+   returns no `plaintextBody`, fall back to the local Gmail-API helper
+   (`python -m reclaim.gmail_fetch thread <threadId>`) — it reads HTML
+   bodies directly and emits a JSON `meeting` block. Only if the helper
+   is unconfigured (see `reclaim/GMAIL_SETUP.md`) should you mark fields
+   "not provided in email". Never fabricate.
 5. Show the user a per-candidate summary, including a "Skipped" section so
    they know what you ignored and why. Call out any conflicts with existing
    `[DRAFT]` Reclaim blocks.

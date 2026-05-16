@@ -11,3 +11,6 @@ dist/
 config/preferences.local.yaml
 config/tasks.local.yaml
 config/habits.local.yaml
+# Never commit Gmail OAuth artifacts (refresh token = full read access to inbox).
+gmail_credentials.json
+gmail_token.json
