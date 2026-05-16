@@ -31,3 +31,10 @@ habits:
     days: [thu]
     ideal_window: { start: "13:30", end: "14:00" }
     priority: P1
+
+  - id: management-call-monday
+    title: Management call
+    duration: 1h
+    days: [mon]
+    ideal_window: { start: "10:00", end: "11:00" }
+    priority: P1
