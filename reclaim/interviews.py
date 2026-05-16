@@ -64,6 +64,13 @@ SKIP_PATTERNS = re.compile(
     r"are no longer moving|been filled|filled the position)\b",
     re.IGNORECASE,
 )
+CONFIRM_PATTERNS = re.compile(
+    r"\b(confirm(ed|ation)?|you('re| are) all set|"
+    r"your interview is|see you (on|at)|"
+    r"this email is a confirmation|"
+    r"interview details|booking is confirmed)\b",
+    re.IGNORECASE,
+)
 ASYNC_DOMAINS = {"hireflix.com", "sparkhire.com", "vidcruiter.com", "spark.hire"}
 ASYNC_HINT = re.compile(r"\b(video interview|automated|on your own time|"
                         r"complete the video|record your)\b", re.IGNORECASE)
@@ -251,6 +258,28 @@ def already_on_calendar(thread_id: str, existing: list[dict]) -> bool:
     return False
 
 
+def conflicts_with_existing(start_dt: datetime, existing: list[dict],
+                            tolerance_min: int = 90) -> bool:
+    """Belt-and-suspenders dedupe: if a separately-imported interview event
+    sits within `tolerance_min` of our candidate start, treat it as the
+    same interview even if the Gmail thread IDs differ."""
+    tol = timedelta(minutes=tolerance_min)
+    for e in existing:
+        summary = (e.get("summary") or "")
+        if "Interview" not in summary:
+            continue
+        ev_start = e.get("start", {}).get("dateTime")
+        if not ev_start:
+            continue
+        try:
+            existing_dt = datetime.fromisoformat(ev_start.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if abs(existing_dt - start_dt) <= tol:
+            return True
+    return False
+
+
 def extract_company(sender: str, subject: str) -> str:
     if "@" in sender:
         domain = sender.split("@", 1)[1].rstrip(">").split()[0]
@@ -311,34 +340,52 @@ def scan(
             report["skipped"].append({"thread": thread_id, "reason": skip, "subject": subject})
             continue
 
-        # Walk every message in the thread; prefer the latest non-sent one.
+        # Walk every message in the thread, INBOUND only. Skip anything
+        # you sent — quoted proposed times in your own replies were
+        # tripping the heuristic and creating phantom events.
         thread = _api_get(
             f"/users/me/threads/{thread_id}", gmail_token, {"format": "minimal"}
         )
         candidate = None
         for m in thread.get("messages", []):
+            if "SENT" in (m.get("labelIds") or []):
+                continue
             msg = fetch_raw_message(m["id"], gmail_token)
             ics_text = find_ics_attachment(msg, gmail_token, m["id"])
             if ics_text:
                 ev = parse_ics(ics_text)
                 if ev and ev.get("dtstart") and ev["dtstart"] > now:
                     candidate = {"via": "ics", "event": ev, "msg": msg, "msg_id": m["id"]}
-                    break  # stop at the first matching ICS in the thread
-            # heuristic fallback collected only if no ICS hit yet
+                    break
+            # Heuristic fallback. Require confirmation language in the SAME
+            # message that contains a parseable future date — otherwise we
+            # pick up "what about May 22?" style suggestions from a recruiter
+            # whose interview hasn't been booked yet.
             if candidate is None:
                 plain, html = message_bodies(msg)
                 text = plain or (html_to_text(html) if html else "")
-                if text:
-                    dt = parse_datetime_from_text(text, default_year=now.year)
-                    if dt and dt > now:
-                        meeting = extract_meeting(text)
-                        candidate = {"via": "heuristic", "start": dt,
-                                     "text": text, "meeting": meeting,
-                                     "msg": msg, "msg_id": m["id"]}
+                if not text or not CONFIRM_PATTERNS.search(text):
+                    continue
+                dt = parse_datetime_from_text(text, default_year=now.year)
+                if dt and dt > now:
+                    meeting = extract_meeting(text)
+                    candidate = {"via": "heuristic", "start": dt,
+                                 "text": text, "meeting": meeting,
+                                 "msg": msg, "msg_id": m["id"],
+                                 "sender": msg.get("From", "")}
 
         if not candidate:
             report["skipped"].append({"thread": thread_id, "reason": "no_future_time",
                                       "subject": subject})
+            continue
+
+        cand_start = (candidate["event"]["dtstart"] if candidate["via"] == "ics"
+                      else candidate["start"])
+        if conflicts_with_existing(cand_start, existing):
+            report["skipped"].append({"thread": thread_id,
+                                      "reason": "time_conflict_with_existing_interview",
+                                      "subject": subject,
+                                      "start": cand_start.isoformat()})
             continue
 
         company = extract_company(sender, subject)
