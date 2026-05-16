@@ -1,0 +1,26 @@
+habits:
+  - id: lunch
+    title: Lunch
+    duration: 45m
+    days: [mon, tue, wed, thu, fri]
+    ideal_window: { start: "12:00", end: "13:30" }
+
+  - id: morning-planning
+    title: Plan the day
+    duration: 15m
+    days: [mon, tue, wed, thu, fri]
+    ideal_window: { start: "09:00", end: "09:30" }
+    priority: P2
+
+  - id: gym
+    title: Gym
+    duration: 1h
+    times_per_week: 3
+    days: [mon, tue, wed, thu, fri]
+    ideal_window: { start: "17:00", end: "19:00" }
+
+  - id: weekly-review
+    title: Weekly review
+    duration: 30m
+    days: [fri]
+    ideal_window: { start: "15:00", end: "16:00" }

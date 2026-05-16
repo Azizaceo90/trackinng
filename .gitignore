@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+build/
+dist/
+.coverage
+.mypy_cache/
+.ruff_cache/
+config/preferences.local.yaml
+config/tasks.local.yaml
+config/habits.local.yaml

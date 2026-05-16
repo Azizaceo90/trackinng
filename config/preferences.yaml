@@ -1,0 +1,34 @@
+# Standard knowledge-worker defaults. Tune to taste; run `reclaim plan` after.
+timezone: UTC
+
+# Working hours per weekday. Leave a day out to mark it off-hours.
+working_hours:
+  mon: [{ start: "09:00", end: "12:00" }, { start: "13:00", end: "17:00" }]
+  tue: [{ start: "09:00", end: "12:00" }, { start: "13:00", end: "17:00" }]
+  wed: [{ start: "09:00", end: "12:00" }, { start: "13:00", end: "17:00" }]
+  thu: [{ start: "09:00", end: "12:00" }, { start: "13:00", end: "17:00" }]
+  fri: [{ start: "09:00", end: "12:00" }, { start: "13:00", end: "16:00" }]
+
+# Days where reclaim won't suggest meeting slots.
+no_meeting_days: [fri]
+
+# Weekly focus / deep-work goal (in hours).
+focus:
+  weekly_hours: 20
+  min_block: 1h
+  max_block: 3h
+  preferred_window: { start: "09:00", end: "12:00" }
+
+# Lunch defaults (also schedulable as a habit; see habits.yaml).
+lunch_window: { start: "12:00", end: "13:00" }
+
+# Auto-buffer "long" meetings (45m+).
+buffer_before_meeting: 5m
+buffer_after_meeting: 10m
+long_meeting_threshold: 45m
+
+# Bias focus blocks to mornings.
+deep_work_morning: true
+
+# Warn if a day has more than this much meeting time.
+max_meeting_density_per_day: 5h
