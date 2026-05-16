@@ -30,26 +30,35 @@ jobs:
         env:
           GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GMAIL_REFRESH_TOKEN_PERSONAL2: ${{ secrets.GMAIL_REFRESH_TOKEN_PERSONAL2 }}
           CALENDAR_REFRESH_TOKEN: ${{ secrets.CALENDAR_REFRESH_TOKEN }}
         run: |
           mkdir -p "$HOME/.config/reclaim/tokens"
           printf '%s' "$GOOGLE_OAUTH_CLIENT" > "$HOME/.config/reclaim/gmail_credentials.json"
           printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN" \
             > "$HOME/.config/reclaim/tokens/default.json"
+          printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN_PERSONAL2" \
+            > "$HOME/.config/reclaim/tokens/personal2.json"
           printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN" \
             > "$HOME/.config/reclaim/tokens/calendar-default.json"
           chmod 600 "$HOME/.config/reclaim/tokens/"*.json
           chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
 
-      - name: Scan Gmail and create interview events
+      - name: Scan default Gmail (muhammadaziza732)
         run: |
-          python -m reclaim.interviews scan --days 14 > report.json
-          echo "--- Summary ---"
-          python -m json.tool report.json | head -20
+          python -m reclaim.interviews scan --days 14 --gmail-account default > report-default.json
+          echo "--- default summary ---"
+          python -m json.tool report-default.json | head -20
+
+      - name: Scan personal2 Gmail (aziza.muhammadx)
+        run: |
+          python -m reclaim.interviews scan --days 14 --gmail-account personal2 > report-personal2.json
+          echo "--- personal2 summary ---"
+          python -m json.tool report-personal2.json | head -20
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ingest-report
-          path: report.json
+          path: report-*.json
           retention-days: 14
