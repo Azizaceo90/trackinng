@@ -313,79 +313,82 @@ def _pick_vertical_for_week(verticals: list[dict], week_of: date) -> dict | None
     return verticals[week_num % len(verticals)]
 
 
-def render_weekly_sections(week_of: date) -> tuple[list[dict], dict | None]:
-    """Build the weekly research doc — one vertical deep-dive per week."""
+def render_weekly_sections(week_of: date) -> tuple[list[dict], list[dict]]:
+    """Build the weekly research doc — comprehensive coverage of every vertical."""
     verticals = _load_target_companies()
-    vertical = _pick_vertical_for_week(verticals, week_of)
 
     s: list[dict] = []
-    if not vertical:
-        s.append({"kind": "heading",
-                  "text": f"Week of {week_of:%b %d, %Y} — (no verticals configured)"})
-        s.append({"kind": "paragraph", "text":
-            "Edit config/target-companies.yaml to add verticals."})
-        return s, None
-
-    name = vertical.get("vertical", "Vertical")
     s.append({"kind": "heading",
-              "text": f"Week of {week_of:%b %d, %Y} — {name}"})
-    s.append({"kind": "paragraph", "text": (vertical.get("description", "") or "").strip()})
-
-    # --- Today's plan ---
-    s.append({"kind": "subheading", "text": "This week's plan (30 min)"})
-    for line in [
-        "Pick 3 companies from the list below.",
-        "Look up the current Managing Director / Practice Group Chair / Brokerage Owner on LinkedIn (60 sec each).",
-        "Adapt the outreach template to ONE specific company's situation (replace generic claims with that company's actual context).",
-        "Schedule the 3 outbound messages for tomorrow morning.",
-    ]:
-        s.append({"kind": "bullet", "text": line})
-
-    # --- Companies ---
-    companies = vertical.get("companies", []) or []
-    s.append({"kind": "subheading", "text": f"Target companies — {len(companies)} options"})
-    for i, c in enumerate(companies, 1):
-        cname = c.get("name", "?")
-        s.append({"kind": "paragraph", "text": f"{i}. {cname}"})
-        size = c.get("size", "")
-        if size:
-            s.append({"kind": "bullet", "text": f"Size / structure: {size}"})
-        if c.get("why_fit"):
-            s.append({"kind": "bullet", "text": f"Why fit: {c['why_fit']}"})
-        if c.get("decision_makers"):
-            s.append({"kind": "bullet", "text": f"Decision-makers: {c['decision_makers']}"})
-
-    # --- Outreach template ---
-    template = vertical.get("outreach_template", "").strip()
-    if template:
-        s.append({"kind": "subheading", "text": "Outreach template (adapt per-company)"})
-        s.append({"kind": "paragraph", "text": template})
-        s.append({"kind": "paragraph", "text":
-            "Substitution: {firstname} = the decision-maker's first name. "
-            "{vertical} = casual reference to their business type. "
-            "{yourname} = Aziza. ALWAYS swap one generic claim for a company-specific detail "
-            "(recent news, headcount change, public deal) before sending."})
-
-    # --- Tracking ---
-    s.append({"kind": "subheading", "text": "This week's sends"})
-    for line in [
-        "Company 1: ___ · Decision-maker: ___ · Sent: ___ · Reply: ___",
-        "Company 2: ___ · Decision-maker: ___ · Sent: ___ · Reply: ___",
-        "Company 3: ___ · Decision-maker: ___ · Sent: ___ · Reply: ___",
-    ]:
-        s.append({"kind": "bullet", "text": line})
-
-    s.append({"kind": "subheading", "text": "Notes for follow-up"})
-    s.append({"kind": "bullet", "text": "What worked / didn't with this vertical: ___"})
-    s.append({"kind": "bullet", "text": "Which company seemed most receptive: ___"})
-    s.append({"kind": "bullet", "text": "Next week's vertical (auto-rotated, see footer)"})
-
+              "text": f"Week of {week_of:%b %d, %Y} — AI + High-Ticket Sales"})
     s.append({"kind": "paragraph", "text":
-        f"Next week's rotation: " + (
-            verticals[(week_of.isocalendar().week + 1) % len(verticals)].get("vertical", "?")
-        )})
+        "Comprehensive coverage of all 6 capital-rich verticals. Pick ONE vertical per "
+        "research session, work the 3 best-fit companies, send 3 outreaches by end of week. "
+        "Rotate verticals you focus on each Monday so all 6 see attention each cycle."})
 
-    return s, vertical
+    if not verticals:
+        s.append({"kind": "paragraph", "text":
+            "(No verticals configured — edit config/target-companies.yaml.)"})
+        return s, []
+
+    # Quick navigation index
+    s.append({"kind": "subheading", "text": "This week's universe"})
+    for i, v in enumerate(verticals, 1):
+        cname_count = len(v.get("companies", []))
+        s.append({"kind": "bullet",
+                  "text": f"{i}. {v.get('vertical', '?')} ({cname_count} target companies)"})
+
+    s.append({"kind": "subheading", "text": "30-min session game plan"})
+    for line in [
+        "Skim the index above. Pick the ONE vertical you want to work this week.",
+        "Open that vertical's section. Read the description + key pain.",
+        "Pick 3 target companies — look up their MDs / partners / brokers on LinkedIn (60 sec each).",
+        "Adapt the outreach template — replace one generic claim with a company-specific detail.",
+        "Schedule 3 outreaches for tomorrow morning. Log in 'this week's sends'.",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    # --- Each vertical gets its own block ---
+    for v in verticals:
+        name = v.get("vertical", "?")
+        s.append({"kind": "heading", "text": name})
+        s.append({"kind": "paragraph", "text": (v.get("description", "") or "").strip()})
+
+        companies = v.get("companies", []) or []
+        s.append({"kind": "subheading", "text": f"Target companies ({len(companies)})"})
+        for i, c in enumerate(companies, 1):
+            cname = c.get("name", "?")
+            line = f"{i}. {cname}"
+            if c.get("size"):
+                line += f" — {c['size']}"
+            s.append({"kind": "bullet", "text": line})
+            if c.get("why_fit"):
+                s.append({"kind": "bullet", "text": f"    Why fit: {c['why_fit']}"})
+            if c.get("decision_makers"):
+                s.append({"kind": "bullet", "text": f"    Decision-makers: {c['decision_makers']}"})
+
+        template = (v.get("outreach_template") or "").strip()
+        if template:
+            s.append({"kind": "subheading", "text": "Outreach template"})
+            s.append({"kind": "paragraph", "text": template})
+
+        s.append({"kind": "subheading", "text": "Sends this week"})
+        for line in [
+            "Company A: ___ · DM: ___ · sent: ___ · reply: ___",
+            "Company B: ___ · DM: ___ · sent: ___ · reply: ___",
+            "Company C: ___ · DM: ___ · sent: ___ · reply: ___",
+        ]:
+            s.append({"kind": "bullet", "text": line})
+
+    s.append({"kind": "heading", "text": "End-of-session review"})
+    for line in [
+        "Which vertical did you actually work on? ___",
+        "Best outreach hook tried: ___",
+        "Replies received: ___",
+        "What to try differently next week: ___",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    return s, verticals
 
 
 def _ensure_framework_doc(folder_id: str, access_token: str) -> str:
@@ -477,15 +480,27 @@ def generate() -> dict:
     framework_url = _ensure_framework_doc(folder["folder_id"], token)
 
     today = datetime.now(DEFAULT_TZ).date()
-    monday = today - timedelta(days=today.weekday())
+    # Target the NEXT Monday (today if today IS Monday). This handles the
+    # case where the workflow is push-triggered on a Sunday and we want the
+    # doc to land on the upcoming research event, not last week's.
+    days_until_monday = (0 - today.weekday()) % 7
+    monday = today + timedelta(days=days_until_monday)
+    if today.weekday() == 0:   # if today's Monday, use today
+        monday = today
 
-    sections, vertical = render_weekly_sections(monday)
-    vertical_name = vertical.get("vertical") if vertical else "(no vertical)"
-    title = f"Week of {monday:%b %d, %Y} — {vertical_name}"
+    sections, verticals = render_weekly_sections(monday)
+    title = f"Week of {monday:%b %d, %Y} — AI + High-Ticket Sales"
 
     doc = google_docs.create_doc(title, token)
     google_docs.write_doc(doc["doc_id"], sections, token)
-    google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
+    try:
+        google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
+        moved_ok = True
+        move_error = None
+    except Exception as ex:
+        moved_ok = False
+        move_error = str(ex)
+        print(f"WARN: move_to_folder failed: {ex}", file=sys.stderr)
 
     # Attach to Monday's recurring research event
     event_link = None
@@ -499,13 +514,15 @@ def generate() -> dict:
     result = {
         "generated_at": datetime.now(DEFAULT_TZ).isoformat(),
         "week_of": monday.isoformat(),
-        "this_week_vertical": vertical_name,
         "folder_url": folder["url"],
         "framework_doc_url": framework_url,
         "week_doc_title": title,
         "week_doc_url": doc["url"],
         "calendar_event_link": event_link,
-        "target_company_count": len(vertical.get("companies", [])) if vertical else 0,
+        "moved_to_folder": moved_ok,
+        "move_error": move_error,
+        "verticals_covered": [v.get("vertical") for v in verticals],
+        "target_company_total": sum(len(v.get("companies", [])) for v in verticals),
     }
     SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     SNAPSHOT_PATH.write_text(json.dumps(result, indent=2, default=str))
