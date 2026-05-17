@@ -37,6 +37,7 @@ jobs:
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
           GMAIL_REFRESH_TOKEN_PERSONAL2: ${{ secrets.GMAIL_REFRESH_TOKEN_PERSONAL2 }}
           CALENDAR_REFRESH_TOKEN: ${{ secrets.CALENDAR_REFRESH_TOKEN }}
+          CALENDAR_REFRESH_TOKEN_PERSONAL2: ${{ secrets.CALENDAR_REFRESH_TOKEN_PERSONAL2 }}
         run: |
           mkdir -p "$HOME/.config/reclaim/tokens"
           printf '%s' "$GOOGLE_OAUTH_CLIENT" > "$HOME/.config/reclaim/gmail_credentials.json"
@@ -46,18 +47,26 @@ jobs:
             > "$HOME/.config/reclaim/tokens/personal2.json"
           printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN" \
             > "$HOME/.config/reclaim/tokens/calendar-default.json"
+          printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN_PERSONAL2" \
+            > "$HOME/.config/reclaim/tokens/calendar-personal2.json"
           chmod 600 "$HOME/.config/reclaim/tokens/"*.json
           chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
 
-      - name: Scan default Gmail (muhammadaziza732)
+      - name: Scan default Gmail (muhammadaziza732) -> default calendar
         run: |
-          python -m reclaim.interviews scan --days 14 --gmail-account default > report-default.json
+          python -m reclaim.interviews scan --days 14 \
+            --gmail-account default \
+            --calendar-account default \
+            > report-default.json
           echo "--- default summary ---"
           python -m json.tool report-default.json | head -20
 
-      - name: Scan personal2 Gmail (aziza.muhammadx)
+      - name: Scan personal2 Gmail (aziza.muhammadx) -> personal2 calendar
         run: |
-          python -m reclaim.interviews scan --days 14 --gmail-account personal2 > report-personal2.json
+          python -m reclaim.interviews scan --days 14 \
+            --gmail-account personal2 \
+            --calendar-account personal2 \
+            > report-personal2.json
           echo "--- personal2 summary ---"
           python -m json.tool report-personal2.json | head -20
 
