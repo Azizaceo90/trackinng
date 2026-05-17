@@ -156,3 +156,11 @@ habits:
     ideal_window: { start: "17:00", end: "19:00" }
     priority: P1
     calendar: personal2
+
+  - id: ai-sales-research
+    title: "🤖 AI tools + high-ticket sales research"
+    duration: 30m
+    days: [mon]
+    ideal_window: { start: "11:00", end: "11:30" }
+    priority: P2
+    calendar: personal2
