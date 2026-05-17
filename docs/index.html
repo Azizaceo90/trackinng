@@ -100,12 +100,19 @@
                                      accent-color: #16a34a; flex-shrink: 0; }
   .checklist input[type=checkbox]:checked + .cl-label { text-decoration: line-through;
                                                           color: #999; }
+  .checklist li.cl-done { display: none; }
+  .checklist.show-done li.cl-done { display: list-item; opacity: .55; }
   .checklist .cl-hint { font-size: .7rem; color: #aaa; margin: .75rem 0 0; }
   .checklist code { background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }
-  #cl-reset { background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
-               font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
-               text-transform: uppercase; letter-spacing: .05em; }
-  #cl-reset:hover { background: #f5f5f5; }
+  .cl-actions { display: flex; gap: .35rem; }
+  #cl-count { font-size: .7rem; color: #aaa; margin-left: .3rem; font-weight: normal;
+               letter-spacing: 0; text-transform: none; }
+  #cl-reset, #cl-toggle-done {
+    background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+    font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  #cl-reset:hover, #cl-toggle-done:hover { background: #f5f5f5; }
 </style>
 </head>
 <body>
@@ -153,10 +160,13 @@
   
   <section class="checklist">
     <div class="checklist-header">
-      <h2>Action items</h2>
-      <button id="cl-reset" type="button">reset</button>
+      <h2>Action items <span id="cl-count"></span></h2>
+      <div class="cl-actions">
+        <button id="cl-toggle-done" type="button">show completed</button>
+        <button id="cl-reset" type="button">reset</button>
+      </div>
     </div>
-    <ul><li><label><input type="checkbox" data-cl="thx-lcmc"><span class="cl-label">Send thank-you to LCMC (Cory Johnson / Addison Group)</span></label></li><li><label><input type="checkbox" data-cl="thx-lifemd"><span class="cl-label">Send thank-you to LifeMD (Thomas Simmons)</span></label></li><li><label><input type="checkbox" data-cl="thx-strala"><span class="cl-label">Send thank-you to Strala (Paul Klitzke)</span></label></li><li><label><input type="checkbox" data-cl="thx-medovent"><span class="cl-label">Send thank-you to Medovent (Priscilla Badua)</span></label></li><li><label><input type="checkbox" data-cl="thx-guidehouse"><span class="cl-label">Send thank-you to Guidehouse (DHA Team / Abby Harper)</span></label></li><li><label><input type="checkbox" data-cl="valenz-prep"><span class="cl-label">Prep for Valenz interview Tue 11am — review Clinical Bill Review Analyst JD, STAR stories</span></label></li><li><label><input type="checkbox" data-cl="ccs-study"><span class="cl-label">Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</span></label></li><li><label><input type="checkbox" data-cl="tasks-yaml"><span class="cl-label">Fill in real tasks in config/tasks.yaml (replace placeholders)</span></label></li><li><label><input type="checkbox" data-cl="apply-5"><span class="cl-label">Apply to 5 new jobs this week</span></label></li></ul>
+    <ul id="cl-list"><li><label><input type="checkbox" data-cl="thx-lcmc"><span class="cl-label">Send thank-you to LCMC (Cory Johnson / Addison Group)</span></label></li><li><label><input type="checkbox" data-cl="thx-lifemd"><span class="cl-label">Send thank-you to LifeMD (Thomas Simmons)</span></label></li><li><label><input type="checkbox" data-cl="thx-strala"><span class="cl-label">Send thank-you to Strala (Paul Klitzke)</span></label></li><li><label><input type="checkbox" data-cl="thx-medovent"><span class="cl-label">Send thank-you to Medovent (Priscilla Badua)</span></label></li><li><label><input type="checkbox" data-cl="thx-guidehouse"><span class="cl-label">Send thank-you to Guidehouse (DHA Team / Abby Harper)</span></label></li><li><label><input type="checkbox" data-cl="valenz-prep"><span class="cl-label">Prep for Valenz interview Tue 11am — review Clinical Bill Review Analyst JD, STAR stories</span></label></li><li><label><input type="checkbox" data-cl="ccs-study"><span class="cl-label">Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</span></label></li><li><label><input type="checkbox" data-cl="tasks-yaml"><span class="cl-label">Fill in real tasks in config/tasks.yaml (replace placeholders)</span></label></li><li><label><input type="checkbox" data-cl="apply-5"><span class="cl-label">Apply to 5 new jobs this week</span></label></li></ul>
     <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
   </section>
 
@@ -189,10 +199,10 @@
     <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td></tr></tbody>
   </table>
 
-  <footer>Generated 2026-05-17 02:14 · <code>reclaim report --format html</code></footer>
+  <footer>Generated 2026-05-17 02:17 · <code>reclaim report --format html</code></footer>
 
 <script>
-// --- Checklist: persist check state in localStorage ---
+// --- Checklist: persist check state, hide done items by default ---
 (function() {
   const KEY = "reclaim-checklist-state";
   function load() {
@@ -200,19 +210,54 @@
   }
   function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
   const state = load();
+  const checklistEl = document.querySelector('.checklist');
+  const counter = document.getElementById('cl-count');
+  const toggleBtn = document.getElementById('cl-toggle-done');
+
+  function updateCount() {
+    const all = document.querySelectorAll('.checklist input[type=checkbox]');
+    const done = document.querySelectorAll('.checklist input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${remaining} of ${all.length})`;
+    if (toggleBtn) toggleBtn.textContent =
+      checklistEl.classList.contains('show-done') ? `hide completed (${done.length})`
+                                                  : `show completed (${done.length})`;
+  }
+
+  function applyDoneClass(cb) {
+    const li = cb.closest('li');
+    if (!li) return;
+    li.classList.toggle('cl-done', cb.checked);
+  }
+
   document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {
     const id = cb.getAttribute('data-cl');
     if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
     cb.addEventListener('change', () => {
       state[id] = cb.checked;
       save(state);
+      applyDoneClass(cb);
+      updateCount();
     });
   });
+
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {
+    checklistEl.classList.toggle('show-done');
+    updateCount();
+  });
+
   const resetBtn = document.getElementById('cl-reset');
   if (resetBtn) resetBtn.addEventListener('click', () => {
     localStorage.removeItem(KEY);
-    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {
+      cb.checked = false;
+      applyDoneClass(cb);
+    });
+    updateCount();
   });
+
+  updateCount();
 })();
 
 const ctx = document.getElementById('chart').getContext('2d');

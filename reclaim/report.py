@@ -238,10 +238,13 @@ def _render_checklist_block(items: list[dict]) -> str:
     return f"""
   <section class="checklist">
     <div class="checklist-header">
-      <h2>Action items</h2>
-      <button id="cl-reset" type="button">reset</button>
+      <h2>Action items <span id="cl-count"></span></h2>
+      <div class="cl-actions">
+        <button id="cl-toggle-done" type="button">show completed</button>
+        <button id="cl-reset" type="button">reset</button>
+      </div>
     </div>
-    <ul>{lis}</ul>
+    <ul id="cl-list">{lis}</ul>
     <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
   </section>"""
 
@@ -560,12 +563,19 @@ def render_html(report: Report) -> str:
                                      accent-color: #16a34a; flex-shrink: 0; }}
   .checklist input[type=checkbox]:checked + .cl-label {{ text-decoration: line-through;
                                                           color: #999; }}
+  .checklist li.cl-done {{ display: none; }}
+  .checklist.show-done li.cl-done {{ display: list-item; opacity: .55; }}
   .checklist .cl-hint {{ font-size: .7rem; color: #aaa; margin: .75rem 0 0; }}
   .checklist code {{ background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }}
-  #cl-reset {{ background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
-               font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
-               text-transform: uppercase; letter-spacing: .05em; }}
-  #cl-reset:hover {{ background: #f5f5f5; }}
+  .cl-actions {{ display: flex; gap: .35rem; }}
+  #cl-count {{ font-size: .7rem; color: #aaa; margin-left: .3rem; font-weight: normal;
+               letter-spacing: 0; text-transform: none; }}
+  #cl-reset, #cl-toggle-done {{
+    background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+    font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+    text-transform: uppercase; letter-spacing: .05em;
+  }}
+  #cl-reset:hover, #cl-toggle-done:hover {{ background: #f5f5f5; }}
 </style>
 </head>
 <body>
@@ -599,7 +609,7 @@ def render_html(report: Report) -> str:
   <footer>Generated {rendered_at} · <code>reclaim report --format html</code></footer>
 
 <script>
-// --- Checklist: persist check state in localStorage ---
+// --- Checklist: persist check state, hide done items by default ---
 (function() {{
   const KEY = "reclaim-checklist-state";
   function load() {{
@@ -607,19 +617,54 @@ def render_html(report: Report) -> str:
   }}
   function save(state) {{ localStorage.setItem(KEY, JSON.stringify(state)); }}
   const state = load();
+  const checklistEl = document.querySelector('.checklist');
+  const counter = document.getElementById('cl-count');
+  const toggleBtn = document.getElementById('cl-toggle-done');
+
+  function updateCount() {{
+    const all = document.querySelectorAll('.checklist input[type=checkbox]');
+    const done = document.querySelectorAll('.checklist input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${{remaining}} of ${{all.length}})`;
+    if (toggleBtn) toggleBtn.textContent =
+      checklistEl.classList.contains('show-done') ? `hide completed (${{done.length}})`
+                                                  : `show completed (${{done.length}})`;
+  }}
+
+  function applyDoneClass(cb) {{
+    const li = cb.closest('li');
+    if (!li) return;
+    li.classList.toggle('cl-done', cb.checked);
+  }}
+
   document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {{
     const id = cb.getAttribute('data-cl');
     if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
     cb.addEventListener('change', () => {{
       state[id] = cb.checked;
       save(state);
+      applyDoneClass(cb);
+      updateCount();
     }});
   }});
+
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {{
+    checklistEl.classList.toggle('show-done');
+    updateCount();
+  }});
+
   const resetBtn = document.getElementById('cl-reset');
   if (resetBtn) resetBtn.addEventListener('click', () => {{
     localStorage.removeItem(KEY);
-    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {{
+      cb.checked = false;
+      applyDoneClass(cb);
+    }});
+    updateCount();
   }});
+
+  updateCount();
 }})();
 
 const ctx = document.getElementById('chart').getContext('2d');
