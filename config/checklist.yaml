@@ -1,0 +1,23 @@
+# Action items shown as a checkable list on the dashboard.
+# State (checked/unchecked) lives in your browser's localStorage,
+# so checking a box on the dashboard doesn't change this file.
+# Add or remove items here; commit + push to update what shows.
+checklist:
+  - id: thx-lcmc
+    label: "Send thank-you to LCMC (Cory Johnson / Addison Group)"
+  - id: thx-lifemd
+    label: "Send thank-you to LifeMD (Thomas Simmons)"
+  - id: thx-strala
+    label: "Send thank-you to Strala (Paul Klitzke)"
+  - id: thx-medovent
+    label: "Send thank-you to Medovent (Priscilla Badua)"
+  - id: thx-guidehouse
+    label: "Send thank-you to Guidehouse (DHA Team / Abby Harper)"
+  - id: valenz-prep
+    label: "Prep for Valenz interview Tue 11am — review Clinical Bill Review Analyst JD, STAR stories"
+  - id: ccs-study
+    label: "Block 1h/day cert study (CCS practice exam) Mon-Fri mornings"
+  - id: tasks-yaml
+    label: "Fill in real tasks in config/tasks.yaml (replace placeholders)"
+  - id: apply-5
+    label: "Apply to 5 new jobs this week"

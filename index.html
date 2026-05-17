@@ -84,6 +84,28 @@
   .fn-v { font-size: 2.25rem; font-weight: 700; line-height: 1; }
   .fn-l { font-size: .7rem; color: #666; margin-top: .35rem;
            text-transform: uppercase; letter-spacing: .05em; }
+  .checklist { background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }
+  .checklist-header { display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }
+  .checklist h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }
+  .checklist ul { list-style: none; padding: 0; margin: 0; }
+  .checklist li { padding: .45rem 0; border-bottom: 1px solid #f3f3f3; }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist label { display: flex; align-items: center; gap: .65rem; cursor: pointer;
+                      font-size: .9rem; }
+  .checklist input[type=checkbox] { width: 1.05rem; height: 1.05rem; cursor: pointer;
+                                     accent-color: #16a34a; flex-shrink: 0; }
+  .checklist input[type=checkbox]:checked + .cl-label { text-decoration: line-through;
+                                                          color: #999; }
+  .checklist .cl-hint { font-size: .7rem; color: #aaa; margin: .75rem 0 0; }
+  .checklist code { background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }
+  #cl-reset { background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+               font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+               text-transform: uppercase; letter-spacing: .05em; }
+  #cl-reset:hover { background: #f5f5f5; }
 </style>
 </head>
 <body>
@@ -129,6 +151,16 @@
   </section>
 
   
+  <section class="checklist">
+    <div class="checklist-header">
+      <h2>Action items</h2>
+      <button id="cl-reset" type="button">reset</button>
+    </div>
+    <ul><li><label><input type="checkbox" data-cl="thx-lcmc"><span class="cl-label">Send thank-you to LCMC (Cory Johnson / Addison Group)</span></label></li><li><label><input type="checkbox" data-cl="thx-lifemd"><span class="cl-label">Send thank-you to LifeMD (Thomas Simmons)</span></label></li><li><label><input type="checkbox" data-cl="thx-strala"><span class="cl-label">Send thank-you to Strala (Paul Klitzke)</span></label></li><li><label><input type="checkbox" data-cl="thx-medovent"><span class="cl-label">Send thank-you to Medovent (Priscilla Badua)</span></label></li><li><label><input type="checkbox" data-cl="thx-guidehouse"><span class="cl-label">Send thank-you to Guidehouse (DHA Team / Abby Harper)</span></label></li><li><label><input type="checkbox" data-cl="valenz-prep"><span class="cl-label">Prep for Valenz interview Tue 11am — review Clinical Bill Review Analyst JD, STAR stories</span></label></li><li><label><input type="checkbox" data-cl="ccs-study"><span class="cl-label">Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</span></label></li><li><label><input type="checkbox" data-cl="tasks-yaml"><span class="cl-label">Fill in real tasks in config/tasks.yaml (replace placeholders)</span></label></li><li><label><input type="checkbox" data-cl="apply-5"><span class="cl-label">Apply to 5 new jobs this week</span></label></li></ul>
+    <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
+  </section>
+
+  
   <section class="reflection">
     <div class="reflection-header">
       <h2>Weekly reflection</h2>
@@ -157,9 +189,32 @@
     <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td></tr></tbody>
   </table>
 
-  <footer>Generated 2026-05-17 01:43 · <code>reclaim report --format html</code></footer>
+  <footer>Generated 2026-05-17 02:14 · <code>reclaim report --format html</code></footer>
 
 <script>
+// --- Checklist: persist check state in localStorage ---
+(function() {
+  const KEY = "reclaim-checklist-state";
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+  }
+  function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+  const state = load();
+  document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {
+    const id = cb.getAttribute('data-cl');
+    if (state[id]) cb.checked = true;
+    cb.addEventListener('change', () => {
+      state[id] = cb.checked;
+      save(state);
+    });
+  });
+  const resetBtn = document.getElementById('cl-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => cb.checked = false);
+  });
+})();
+
 const ctx = document.getElementById('chart').getContext('2d');
 new Chart(ctx, {
   type: 'bar',

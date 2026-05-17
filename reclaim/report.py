@@ -209,6 +209,43 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_checklist() -> list[dict]:
+    """Read config/checklist.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/checklist.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("checklist", []) or []
+
+
+def _render_checklist_block(items: list[dict]) -> str:
+    import html as _html
+    if not items:
+        return ""
+    lis = "".join(
+        f'<li><label><input type="checkbox" data-cl="{_html.escape(str(it.get("id","")))}">'
+        f'<span class="cl-label">{_html.escape(str(it.get("label","")))}</span></label></li>'
+        for it in items
+    )
+    return f"""
+  <section class="checklist">
+    <div class="checklist-header">
+      <h2>Action items</h2>
+      <button id="cl-reset" type="button">reset</button>
+    </div>
+    <ul>{lis}</ul>
+    <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
+  </section>"""
+
+
 def _load_funnel_snapshot() -> dict | None:
     """Read config/funnel-snapshot.json. Returns None if missing."""
     from pathlib import Path
@@ -507,6 +544,28 @@ def render_html(report: Report) -> str:
   .fn-v {{ font-size: 2.25rem; font-weight: 700; line-height: 1; }}
   .fn-l {{ font-size: .7rem; color: #666; margin-top: .35rem;
            text-transform: uppercase; letter-spacing: .05em; }}
+  .checklist {{ background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }}
+  .checklist-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }}
+  .checklist h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }}
+  .checklist ul {{ list-style: none; padding: 0; margin: 0; }}
+  .checklist li {{ padding: .45rem 0; border-bottom: 1px solid #f3f3f3; }}
+  .checklist li:last-child {{ border-bottom: none; }}
+  .checklist label {{ display: flex; align-items: center; gap: .65rem; cursor: pointer;
+                      font-size: .9rem; }}
+  .checklist input[type=checkbox] {{ width: 1.05rem; height: 1.05rem; cursor: pointer;
+                                     accent-color: #16a34a; flex-shrink: 0; }}
+  .checklist input[type=checkbox]:checked + .cl-label {{ text-decoration: line-through;
+                                                          color: #999; }}
+  .checklist .cl-hint {{ font-size: .7rem; color: #aaa; margin: .75rem 0 0; }}
+  .checklist code {{ background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }}
+  #cl-reset {{ background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+               font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+               text-transform: uppercase; letter-spacing: .05em; }}
+  #cl-reset:hover {{ background: #f5f5f5; }}
 </style>
 </head>
 <body>
@@ -526,6 +585,8 @@ def render_html(report: Report) -> str:
 
   {_render_funnel_block(_load_funnel_snapshot())}
 
+  {_render_checklist_block(_load_checklist())}
+
   {_render_reflection_block(_load_reflections())}
 
   <canvas id="chart" height="120"></canvas>
@@ -538,6 +599,29 @@ def render_html(report: Report) -> str:
   <footer>Generated {rendered_at} · <code>reclaim report --format html</code></footer>
 
 <script>
+// --- Checklist: persist check state in localStorage ---
+(function() {{
+  const KEY = "reclaim-checklist-state";
+  function load() {{
+    try {{ return JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{ return {{}}; }}
+  }}
+  function save(state) {{ localStorage.setItem(KEY, JSON.stringify(state)); }}
+  const state = load();
+  document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {{
+    const id = cb.getAttribute('data-cl');
+    if (state[id]) cb.checked = true;
+    cb.addEventListener('change', () => {{
+      state[id] = cb.checked;
+      save(state);
+    }});
+  }});
+  const resetBtn = document.getElementById('cl-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => {{
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => cb.checked = false);
+  }});
+}})();
+
 const ctx = document.getElementById('chart').getContext('2d');
 new Chart(ctx, {{
   type: 'bar',
