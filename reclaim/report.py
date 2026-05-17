@@ -209,6 +209,64 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_reflections() -> list[dict]:
+    """Read config/reflections.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/reflections.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("reflections", []) or []
+
+
+def _render_reflection_block(reflections: list[dict]) -> str:
+    """Render the most recent reflection on the dashboard."""
+    import html as _html
+    if not reflections:
+        return ""
+    # Most recent first — assume newest at top of YAML
+    r = reflections[0]
+    week = r.get("week_of", "(no week)")
+    worked = r.get("worked", []) or []
+    didnt = r.get("didnt_work", []) or []
+    nxt = r.get("next_week", []) or []
+
+    def _ul(items, cls):
+        if not items:
+            return f'<p class="empty">(nothing logged)</p>'
+        lis = "".join(f"<li>{_html.escape(x)}</li>" for x in items)
+        return f'<ul class="{cls}">{lis}</ul>'
+
+    return f"""
+  <section class="reflection">
+    <div class="reflection-header">
+      <h2>Weekly reflection</h2>
+      <span class="reflection-week">week of {_html.escape(str(week))}</span>
+    </div>
+    <div class="reflection-cols">
+      <div class="reflection-col worked">
+        <h3>✅ What worked</h3>
+        {_ul(worked, "worked-list")}
+      </div>
+      <div class="reflection-col didnt">
+        <h3>❌ What didn't</h3>
+        {_ul(didnt, "didnt-list")}
+      </div>
+      <div class="reflection-col nxt">
+        <h3>➡️ Next week</h3>
+        {_ul(nxt, "nxt-list")}
+      </div>
+    </div>
+  </section>"""
+
+
 def _load_goals() -> list[dict]:
     """Read config/goals.yaml. Returns [] if missing."""
     from pathlib import Path
@@ -374,6 +432,26 @@ def render_html(report: Report) -> str:
   .goal-bar-fill {{ height: 100%; background: white; border-radius: 4px;
                    transition: width .3s ease; }}
   .goal-meta {{ font-size: .75rem; opacity: .8; margin-top: .35rem; }}
+  .reflection {{ background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }}
+  .reflection-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }}
+  .reflection h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }}
+  .reflection-week {{ font-size: .75rem; color: #888; }}
+  .reflection-cols {{ display: grid; grid-template-columns: 1fr 1fr 1fr;
+                      gap: 1.25rem; }}
+  @media (max-width: 720px) {{ .reflection-cols {{ grid-template-columns: 1fr; }} }}
+  .reflection-col h3 {{ font-size: .85rem; margin: 0 0 .5rem;
+                        font-weight: 600; color: #444; }}
+  .reflection-col ul {{ margin: 0; padding-left: 1.1rem; color: #333;
+                       font-size: .85rem; line-height: 1.4; }}
+  .reflection-col li {{ margin-bottom: .35rem; }}
+  .reflection-col .empty {{ color: #aaa; font-style: italic; font-size: .85rem; margin: 0; }}
+  .reflection-col.worked h3 {{ color: #16a34a; }}
+  .reflection-col.didnt  h3 {{ color: #dc2626; }}
+  .reflection-col.nxt    h3 {{ color: #2563eb; }}
 </style>
 </head>
 <body>
@@ -390,6 +468,8 @@ def render_html(report: Report) -> str:
   </div>
 
   {_render_goal_block(_load_goals())}
+
+  {_render_reflection_block(_load_reflections())}
 
   <canvas id="chart" height="120"></canvas>
 

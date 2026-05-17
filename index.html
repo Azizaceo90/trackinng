@@ -48,6 +48,26 @@
   .goal-bar-fill { height: 100%; background: white; border-radius: 4px;
                    transition: width .3s ease; }
   .goal-meta { font-size: .75rem; opacity: .8; margin-top: .35rem; }
+  .reflection { background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }
+  .reflection-header { display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }
+  .reflection h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }
+  .reflection-week { font-size: .75rem; color: #888; }
+  .reflection-cols { display: grid; grid-template-columns: 1fr 1fr 1fr;
+                      gap: 1.25rem; }
+  @media (max-width: 720px) { .reflection-cols { grid-template-columns: 1fr; } }
+  .reflection-col h3 { font-size: .85rem; margin: 0 0 .5rem;
+                        font-weight: 600; color: #444; }
+  .reflection-col ul { margin: 0; padding-left: 1.1rem; color: #333;
+                       font-size: .85rem; line-height: 1.4; }
+  .reflection-col li { margin-bottom: .35rem; }
+  .reflection-col .empty { color: #aaa; font-style: italic; font-size: .85rem; margin: 0; }
+  .reflection-col.worked h3 { color: #16a34a; }
+  .reflection-col.didnt  h3 { color: #dc2626; }
+  .reflection-col.nxt    h3 { color: #2563eb; }
 </style>
 </head>
 <body>
@@ -83,6 +103,28 @@
   </div>
   </section>
 
+  
+  <section class="reflection">
+    <div class="reflection-header">
+      <h2>Weekly reflection</h2>
+      <span class="reflection-week">week of 2026-05-11</span>
+    </div>
+    <div class="reflection-cols">
+      <div class="reflection-col worked">
+        <h3>✅ What worked</h3>
+        <ul class="worked-list"><li>7 interviews — strong top-of-funnel volume</li><li>Valenz interview confirmed via auto-ingest from HTML-only email</li><li>Got skincare / fitness / spiritual routine on the calendar</li></ul>
+      </div>
+      <div class="reflection-col didnt">
+        <h3>❌ What didn't</h3>
+        <ul class="didnt-list"><li>0 focus blocks all week — 100% meeting load is unsustainable</li><li>No thank-yous sent after Thursday&#x27;s 4 back-to-back interviews</li><li>Plan-the-day and Foundations of Al-Islam collided at 9am</li></ul>
+      </div>
+      <div class="reflection-col nxt">
+        <h3>➡️ Next week</h3>
+        <ul class="nxt-list"><li>Send thank-yous to LCMC / LifeMD / Strala / Medovent / Guidehouse</li><li>Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</li><li>Prepare for Valenz Tue 11am: review Clinical Bill Review Analyst job description, prep STAR stories</li></ul>
+      </div>
+    </div>
+  </section>
+
   <canvas id="chart" height="120"></canvas>
 
   <table>
@@ -90,7 +132,7 @@
     <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td></tr></tbody>
   </table>
 
-  <footer>Generated 2026-05-17 01:20 · <code>reclaim report --format html</code></footer>
+  <footer>Generated 2026-05-17 01:32 · <code>reclaim report --format html</code></footer>
 
 <script>
 const ctx = document.getElementById('chart').getContext('2d');
