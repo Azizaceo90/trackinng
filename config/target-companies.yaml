@@ -1,0 +1,346 @@
+# Curated target companies per capital-rich vertical.
+# Pre-researched starting points — verify currency before outreach.
+# Update / add as you learn more about each vertical.
+
+target_companies:
+
+  - vertical: "Boutique M&A / lower-mid market"
+    rotation_week: 0
+    description: >
+      M&A advisory firms outside the bulge bracket. Source mandates through
+      senior banker relationships, conferences, and golf. AI-augmented
+      outbound is genuinely novel here.
+    companies:
+      - name: Houlihan Lokey
+        size: "~2,500 staff, public (HLI)"
+        why_fit: "Strong middle-market focus; mandate volume large enough to feel pipeline gaps."
+        decision_makers: "MDs by sector — search LinkedIn 'Houlihan Lokey Managing Director'."
+      - name: William Blair
+        size: "~2,000 staff, private partnership"
+        why_fit: "Growth-company M&A; partnership structure means partners feel origination pressure personally."
+        decision_makers: "Investment Banking MDs — public on the firm site."
+      - name: Lincoln International
+        size: "~1,000 globally, private"
+        why_fit: "Mid-market specialist, sector-focused MDs. Each MD has personal mandate quota."
+        decision_makers: "Sector heads (Industrials, Healthcare, etc.) — listed on linc.com."
+      - name: Harris Williams
+        size: "~400 bankers, owned by PNC"
+        why_fit: "Pure middle-market; managing partner level cares about origination throughput."
+      - name: Capstone Partners
+        size: "~250 bankers, multi-office US"
+        why_fit: "Lower-middle market explicitly. Smaller team = each banker's origination matters more."
+      - name: Cascadia Capital
+        size: "~200 bankers, US-focused"
+        why_fit: "Pacific NW based; tech + consumer focus. Tight team, MDs accessible."
+      - name: D.A. Davidson Investment Banking
+        size: "~150 bankers"
+        why_fit: "Smaller boutique with sector-aligned MDs. Real pipeline pressure on each MD."
+      - name: Robert W. Baird Investment Banking
+        size: "~500 bankers, Milwaukee HQ"
+        why_fit: "Middle-market focus; partnership structure."
+      - name: Stifel Financial / KBW
+        size: "~7,500 staff, public (SF)"
+        why_fit: "KBW unit is financial-services M&A; very specialized MDs."
+      - name: Piper Sandler"
+        size: "~1,500 staff, public (PIPR)"
+        why_fit: "Middle-market with specialty groups (healthcare, FinTech)."
+    outreach_template: |
+      Subject: 30 seconds — adjacent firm filled 2024 mandate gap
+
+      Hi {firstname},
+
+      Most {vertical} firms I've spoken to this year have the same constraint:
+      their MD-led origination engine is at capacity 90% of the time, which
+      leaves 10-15% of the year's deal capacity unused.
+
+      A peer firm worth roughly the same as yours used AI-augmented outbound
+      to identify decision-makers at 200 potential sellers in their target
+      sectors during a 90-day window. They closed 2 mandates from that work,
+      both north of $250K in fees. The mandates wouldn't have surfaced on
+      the conference/golf circuit.
+
+      Not pitching anything yet — would a 15-minute call to share specifically
+      what worked be useful, ahead of your next planning cycle?
+
+      {yourname}
+
+  - vertical: "Private wealth / RIA"
+    rotation_week: 1
+    description: >
+      Registered investment advisors managing HNWI/UHNWI portfolios. Currently
+      acquire via referrals from CPAs and estate attorneys. Modern outbound
+      = unfair advantage to identify $5M+ liquidity events.
+    companies:
+      - name: Edelman Financial Engines
+        size: "~$300B AUM, ~1,000 advisors"
+        why_fit: "Largest US RIA; growth pressure on regional VPs."
+      - name: Mercer Advisors
+        size: "~$60B AUM"
+        why_fit: "Aggressive PE-backed acquisitive RIA; always hungry for organic + acquired growth."
+      - name: Creative Planning
+        size: "~$200B AUM"
+        why_fit: "PE-backed, growing fast through M&A. Regional MD pressure to land institutional clients."
+      - name: Carson Group
+        size: "~$25B AUM"
+        why_fit: "Coaches + serves advisors; understands what drives advisor productivity."
+      - name: Mariner Wealth Advisors
+        size: "~$140B AUM"
+        why_fit: "Fast-growing, regional offices want HNW pipeline."
+      - name: Beacon Pointe Advisors
+        size: "~$36B AUM"
+        why_fit: "PE-backed roll-up; regional partners get scorecards on AUM growth."
+      - name: Pathstone
+        size: "~$70B AUM"
+        why_fit: "Pure-play family office services; UHNW focus."
+      - name: Cresset Capital
+        size: "~$50B AUM"
+        why_fit: "Multifamily office, growth-oriented partnership."
+      - name: Hightower
+        size: "~$160B AUM"
+        why_fit: "RIA aggregator; regional MDs have explicit AUM growth quotas."
+      - name: Wealth Enhancement Group
+        size: "~$90B AUM"
+        why_fit: "PE-backed (TA Associates); aggressive organic + M&A growth."
+    outreach_template: |
+      Subject: Identifying $5M+ liquidity events before they happen
+
+      Hi {firstname},
+
+      Most RIAs I've worked with rely on attorneys and CPAs for HNW referrals.
+      The problem isn't quality — those leads are great. It's volume and timing:
+      you find out about the liquidity event after 2-3 competitor advisors are
+      already at the kitchen table.
+
+      A peer firm of yours used AI-augmented signals (SEC Form 4 insider sales,
+      M&A filings, IPO lockup expirations) to identify ~15 $5M+ liquidity
+      events/month before they crossed any advisor's referral network. Closed
+      4 new households at $1M+ each in the first 6 months.
+
+      15-minute call — happy to walk through exactly which signals matter and
+      which are noise. No pitch on the call.
+
+      {yourname}
+
+  - vertical: "Yacht / private aviation brokerage"
+    rotation_week: 2
+    description: >
+      Luxury asset brokers. Source via boat/aviation shows, marinas, captain
+      networks. Modern outbound on UHNW buyers is unprecedented.
+    companies:
+      - name: Northrop & Johnson
+        size: "Global yacht brokerage"
+        why_fit: "Charter + sales; one of the largest US-based yacht houses."
+      - name: Fraser Yachts
+        size: "Global, ~270 brokers"
+        why_fit: "Largest superyacht brokerage; office heads have mandate to grow new-build sales."
+      - name: Camper & Nicholsons
+        size: "Global, historic luxury brand"
+        why_fit: "Strong UHNW relationships, but mostly reactive sourcing."
+      - name: Burgess Yachts
+        size: "Global, 100+ brokers"
+        why_fit: "Superyacht specialist, $30M+ vessel sales."
+      - name: Edmiston & Company
+        size: "Premium yacht broker"
+        why_fit: "UHNW client focus, smaller team makes outbound results visible."
+      - name: International Yacht Collection
+        size: "US-based brokerage"
+        why_fit: "Mid-tier brokerage with growth pressure."
+      - name: Worth Avenue Yachts
+        size: "US, FL based"
+        why_fit: "Brokerage + charter; partnership team."
+      - name: NetJets
+        size: "Largest fractional jet operator"
+        why_fit: "Owner acquisition is massively underwritten; AI outreach could move the needle."
+      - name: Vista (NetJets parent / VistaJet)
+        size: "Global jet ownership/lease"
+        why_fit: "Subscription-style; new program sign-ups = LTV in $millions."
+      - name: Flexjet
+        size: "US fractional jet"
+        why_fit: "Smaller than NetJets but aggressive; head of sales has growth quota."
+    outreach_template: |
+      Subject: Identifying yacht buyers 6 months before boat shows
+
+      Hi {firstname},
+
+      Most brokerages I've spoken with depend on showroom walk-ins and dealer
+      referrals — both lagging indicators. The buyers who matter (recent
+      business sale, IPO, divorce equalization) are spending time on their
+      next major asset 3-9 months before they walk into anyone's office.
+
+      We identify those liquidity events via SEC filings, M&A announcements,
+      and intent signals — then surface them to brokerages with a short list
+      of qualified prospects each month.
+
+      One US brokerage used this approach last year to surface 8 superyacht
+      buyers in 9 months. Closed 2 at $12M+ each.
+
+      Worth a 15-minute call? No pitch.
+
+      {yourname}
+
+  - vertical: "Boutique law firms (M&A, T&E, securities)"
+    rotation_week: 3
+    description: >
+      Law firms whose origination depends entirely on partner reputation +
+      bar/CLE networks. Lateral hires bring books and leave with them.
+    companies:
+      - name: Wachtell, Lipton, Rosen & Katz
+        size: "~280 lawyers, NYC"
+        why_fit: "Highest profit-per-partner in US; very selective on outbound but listens to peer signals."
+      - name: Cravath, Swaine & Moore
+        size: "~500 lawyers, NYC"
+        why_fit: "M&A elite; partner committee scrutinizes origination."
+      - name: Sullivan & Cromwell
+        size: "~900 lawyers, global"
+        why_fit: "M&A heavyweight; practice group chairs care about pipeline."
+      - name: Simpson Thacher & Bartlett
+        size: "~1,100 lawyers"
+        why_fit: "PE / sponsor-side M&A leader."
+      - name: Latham & Watkins
+        size: "~3,200 lawyers, global"
+        why_fit: "Massive M&A practice; office heads have growth metrics."
+      - name: Kirkland & Ellis
+        size: "~3,500 lawyers"
+        why_fit: "Largest profit pool in the world; partner originations matter for comp tiers."
+      - name: Skadden, Arps, Slate, Meagher & Flom
+        size: "~1,700 lawyers"
+        why_fit: "Historic M&A leader; lateral partner pressure."
+      - name: Davis Polk & Wardwell
+        size: "~1,000 lawyers"
+        why_fit: "Public company M&A and securities work."
+      - name: Paul, Weiss, Rifkind, Wharton & Garrison
+        size: "~1,000 lawyers"
+        why_fit: "Aggressive lateral hire strategy = always replacing books of business."
+      - name: Weil, Gotshal & Manges
+        size: "~1,000 lawyers"
+        why_fit: "PE-focused M&A; sponsor-deal originations."
+    outreach_template: |
+      Subject: Lateral partner book risk + scalable matter origination
+
+      Hi {firstname},
+
+      Most M&A practice groups I've spoken with face the same structural risk:
+      lateral partners bring books, and when they leave, those books usually
+      go with them. The firm has no independent pipeline to weather that.
+
+      A peer firm built a scalable matter-origination system — AI-augmented
+      identification of corporate buyers/sellers BEFORE the public RFP — so
+      the firm's pipeline is independent of any single partner. In 18 months
+      they sourced 7 mandates worth $4.2M in fees, none referred through a
+      partner relationship.
+
+      Worth a 15-minute call to compare notes on pipeline architecture?
+
+      {yourname}
+
+  - vertical: "Family offices / MFOs"
+    rotation_week: 4
+    description: >
+      Single-family and multi-family offices. Tightly closed networks. The
+      family's wealth concentration moment (business exit) creates a 30-90
+      day window where a new advisor can win the relationship.
+    companies:
+      - name: Bessemer Trust
+        size: "~$250B AUM, multi-family"
+        why_fit: "Storied MFO; growth depends on next-gen and new-family wins."
+      - name: Northern Trust Family Office
+        size: "Large bank-affiliated"
+        why_fit: "Big platform, but family-office division has independent business development."
+      - name: Glenmede
+        size: "~$45B AUM"
+        why_fit: "Independent MFO; managing partners feel acquisition pressure."
+      - name: Pathstone
+        size: "~$70B AUM"
+        why_fit: "MFO-style services for UHNW families."
+      - name: Cresset Capital
+        size: "~$50B AUM"
+        why_fit: "MFO targeting families with $25M+ liquid."
+      - name: Hawthorn / PNC Family Wealth
+        size: "Large bank-affiliated"
+        why_fit: "PNC's UHNW arm; client team has business development quotas."
+      - name: U.S. Trust (Bank of America)
+        size: "Largest US private bank"
+        why_fit: "Regional MDs target families in their geography."
+      - name: J.P. Morgan Private Bank
+        size: "$3T+ wealth platform"
+        why_fit: "Regional team leaders compete for UHNW families."
+      - name: Goldman Sachs Private Wealth Management
+        size: "~$1T+ in PWM"
+        why_fit: "Pressure to find $25M+ relationships; team leads have explicit quotas."
+      - name: Tiedemann Constantia (Alvarium Tiedemann)
+        size: "~$50B AUM, public (TWMG)"
+        why_fit: "Independent MFO; growth = stock price for management."
+    outreach_template: |
+      Subject: Identifying $25M+ liquidity events before competitors
+
+      Hi {firstname},
+
+      Most MFOs win or lose families during a narrow 30-90 day window after a
+      business exit, IPO lockup, or major liquidity event. By the time the
+      family's CPA or estate attorney calls a competitor advisor, you're
+      already behind.
+
+      We've built a signals layer that surfaces $25M+ liquidity events 30-60
+      days BEFORE they hit public news — SEC filings, M&A announcements,
+      private placement disclosures, board changes. Allows your business
+      development team to be the first call.
+
+      One MFO peer used this last year to land 3 new families ($90M, $40M,
+      $35M AUM). 15-minute call worth it?
+
+      {yourname}
+
+  - vertical: "Specialty CRE — industrial / data center / medical"
+    rotation_week: 5
+    description: >
+      Commercial real estate brokers serving high-margin specialty segments.
+      Identifying corporate tenants BEFORE the RFP gets posted is the lever.
+    companies:
+      - name: JLL (Industrial & Logistics, Data Center)
+        size: "Global CRE giant"
+        why_fit: "Specialty teams have margin pressure as logistics commoditizes."
+      - name: CBRE (Industrial, Data Center Solutions)
+        size: "Global CRE leader"
+        why_fit: "Data center brokerage is one of CBRE's fastest-growing units."
+      - name: Cushman & Wakefield
+        size: "Global CRE"
+        why_fit: "Specialty group practice leaders feel commodification."
+      - name: Newmark
+        size: "Global CRE, public (NMRK)"
+        why_fit: "Smaller than the big 3, more agile, growth-focused."
+      - name: Colliers International
+        size: "Global"
+        why_fit: "Specialty teams (life sciences, industrial) have aggressive growth targets."
+      - name: Avison Young
+        size: "Global, partnership"
+        why_fit: "Partnership structure = local market leads feel pipeline pressure personally."
+      - name: Stream Realty Partners
+        size: "US, ~1,400 staff"
+        why_fit: "Industrial + office specialists; smaller team = each broker's pipeline is visible."
+      - name: Lee & Associates
+        size: "US, brokerage-owned"
+        why_fit: "Owner-operator brokers, especially industrial-focused."
+      - name: Kidder Mathews
+        size: "Western US"
+        why_fit: "Regional specialist, industrial-heavy."
+      - name: Brookfield / DataBank (data center sales)
+        size: "Specialist data center investor/operator"
+        why_fit: "Acquisition pipeline; corporate dev team."
+    outreach_template: |
+      Subject: Industrial tenant identification before the RFP hits
+
+      Hi {firstname},
+
+      The margin in industrial tenant rep / data center brokerage compresses
+      to 1-2% the moment an RFP goes public. Everyone competes on price after
+      that.
+
+      Our system identifies corporate tenants in tech/healthcare 60-90 days
+      BEFORE they post the RFP — based on hiring patterns, public real estate
+      filings, supply chain announcements, and capacity disclosures. Lets your
+      brokers walk in pre-RFP with the right asset.
+
+      One specialty broker used this to land 3 100K-sq-ft+ deals last year
+      that wouldn't have come through normal channels. Worth 15 min?
+
+      {yourname}
