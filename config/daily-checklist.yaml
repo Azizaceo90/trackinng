@@ -2,7 +2,7 @@
 # Checks reset every morning (storage is keyed by today's date).
 # Add/remove items here.
 daily_checklist:
-  show_on_days: [mon, tue, wed, thu, fri]
+  show_on_days: [mon, tue, wed, thu, fri, sat, sun]
   items:
     # Prayers — on time
     - id: fajr
