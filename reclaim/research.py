@@ -1,25 +1,29 @@
 """Weekly AI tools + high-ticket sales research → Google Doc.
 
-Runs Monday mornings before the 11am research block on aziza.muhammadx's
-calendar fires. Each run creates a fresh Google Doc titled
-"AI + High-Ticket Sales Research — Week of <Mon>".
+Applies the "GLP-1 textbook gold mine" framework: identify markets
+where (a) massive demand already exists, (b) current supply is broken
+or nonexistent, and (c) a new MECHANISM solves it differently. The
+mechanism doesn't have to be new in the world — just new in THAT
+market. Cold outbound in SaaS = commoditized. Cold outbound in
+boutique M&A / yacht brokers / private wealth = unfair advantage.
 
-Sources:
-  - Hacker News (Algolia API) — past-week stories matching sales/AI/B2B keywords
-  - Optional: extend with ProductHunt, Indie Hackers later
+Each weekly doc evaluates this week's AI tools through that lens:
+  - What does the tool do?
+  - In its current market, is the mechanism commoditized?
+  - Which capital-rich verticals would still find it novel?
+  - For each, the 4 positioning elements (CFO vocabulary, failure
+    mode architecture, whose job is on the line, financial
+    consequence of inaction).
 
-The script doesn't try to be a finished memo. It's a discovery feed —
-5-10 candidate items per week, link + 1-line summary, ranked by HN
-points (a rough proxy for "did people actually notice this?").
-
-CLI:
-    python -m reclaim.research generate   # build this week's doc
-    python -m reclaim.research list       # show recent runs
+All docs are placed in a 'AI High-Ticket Sales Research' folder in
+aziza.muhammadx's Drive. A static "Framework" doc lives at the top of
+the folder as a reading-first reference.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -32,40 +36,115 @@ from reclaim import google_docs
 
 DEFAULT_TZ = ZoneInfo("America/Detroit")
 SNAPSHOT_PATH = Path("config/research-snapshot.json")
+FOLDER_NAME = "AI High-Ticket Sales Research"
+FRAMEWORK_DOC_TITLE = "📕 Framework — GLP-1 Pattern (read first)"
 
 HN_ALGOLIA = "https://hn.algolia.com/api/v1/search"
 
-# Multi-pass search — each query returns top stories, we dedupe + score
+# --- Capital-rich verticals where modern AI-augmented outbound is still novel
+CAPITAL_RICH_VERTICALS = [
+    {
+        "name": "Boutique M&A / lower-mid market PE",
+        "current_motion": "Golf tournaments, senior banker relationships built over 30+ years, "
+                          "personal introductions, conferences.",
+        "key_pain": "Mandate sourcing is non-scalable. Each new mandate requires a senior partner's "
+                    "calendar. Pipeline shrinks when seniors are tied up on existing deals.",
+        "decision_maker": "Managing Director / Head of Origination",
+        "financial_consequence": "$2-5M/year in deal fees missed per under-utilized senior banker. "
+                                 "Bad quarter directly impacts partner distributions + LP optics.",
+        "cfo_vocabulary": "deal flow, mandate pipeline, origination quotas, fee accretion, MOIC, "
+                          "carry pool, LP reporting cycle",
+    },
+    {
+        "name": "Private wealth management / RIA",
+        "current_motion": "Referrals from estate attorneys, accountants, CPAs. Networking through "
+                          "country clubs, charity galas. Inherited client books.",
+        "key_pain": "HNWI acquisition cost is brutal. Referral network is finite. No scalable way "
+                    "to identify $5M+ liquidity events (business sales, IPO lockup expirations).",
+        "decision_maker": "Managing Partner / Director of Business Development",
+        "financial_consequence": "$25-50K AUM-fee per HNWI client per year. One missed $10M client = "
+                                 "$50K-150K annual recurring revenue at risk.",
+        "cfo_vocabulary": "AUM, fee compression, organic growth rate, share-of-wallet, "
+                          "household NW, AUM-per-advisor",
+    },
+    {
+        "name": "Yacht / private aviation / luxury asset brokerage",
+        "current_motion": "Boat shows, marina walk-ins, manufacturer dealer networks, "
+                          "yacht clubs, captain referrals.",
+        "key_pain": "Sales cycle is 6-18 months. Buyer identification is reactive (they show up). "
+                    "Reseller margin is shrinking; original sales = the real cash.",
+        "decision_maker": "Brokerage owner / Director of Sales",
+        "financial_consequence": "$300K-2M commission per yacht. Missing 2-3 buyers a year = "
+                                 "the difference between profitable and shuttered office.",
+        "cfo_vocabulary": "list price, commission split, charter days, hull turnover, "
+                          "season inventory, trade-up upgrade rate",
+    },
+    {
+        "name": "Boutique law firms (M&A, T&E, securities)",
+        "current_motion": "Bar association events, CLE conferences, partner-to-partner referrals, "
+                          "law school alumni networks.",
+        "key_pain": "New matter generation depends on partner's personal network. Lateral partner "
+                    "hires bring books, leave with them. No scalable origination beyond reputation.",
+        "decision_maker": "Managing Partner / Practice Group Chair",
+        "financial_consequence": "$200K-500K per missed matter. Partner-hour utilization below 70% "
+                                 "kills firm profitability and triggers comp committee scrutiny.",
+        "cfo_vocabulary": "matter origination, billable utilization, realization rate, RPL "
+                          "(revenue per lawyer), partner originations vs working, lockstep",
+    },
+    {
+        "name": "Family offices / multi-family offices",
+        "current_motion": "Referral-only. Often closed to new clients without a $50-100M minimum. "
+                          "Discovery happens at private events, not in public.",
+        "key_pain": "Need to find $25M+ liquidity events (business exits) BEFORE the family commits "
+                    "to a competitor. The window from sale to advisor selection is 30-90 days.",
+        "decision_maker": "CIO / Head of Family Office",
+        "financial_consequence": "$250K-1M annual fee per family. One missed family = a decade of "
+                                 "compounded fee + bespoke service revenue.",
+        "cfo_vocabulary": "next-gen continuity, generational wealth transfer, alts allocation, "
+                          "concentration risk, illiquidity premium, governance",
+    },
+    {
+        "name": "Commercial real estate (specialty: industrial / data center / medical office)",
+        "current_motion": "CCIM/SIOR networks, broker-of-record relationships, property tours, "
+                          "ICSC conferences.",
+        "key_pain": "Identifying corporate tenants in tech / healthcare BEFORE they post an RFP. "
+                    "Once it's public, margin gets compressed to 1-2%.",
+        "decision_maker": "Principal Broker / Tenant-Rep Director",
+        "financial_consequence": "Industrial broker commission = $50K-500K per deal. Data center "
+                                 "broker = $1M+. Missing 2-3 deals = a brutal year.",
+        "cfo_vocabulary": "absorption rate, NNN rent, basis points, IRR, going-in cap rate, "
+                          "stabilization timeline, tenant credit",
+    },
+]
+
+# Multi-pass HN search — each query returns top stories, we dedupe + score
 QUERIES = [
-    "AI sales",
-    "B2B AI",
-    "sales AI agent",
-    "AI for sales",
-    "GPT sales",
-    "enterprise AI sales",
-    "sales automation AI",
+    "AI sales outbound",
+    "AI lead generation",
+    "AI sales agent",
+    "B2B AI tool",
     "AI cold email",
+    "enterprise AI sales",
+    "AI SDR",
+    "AI prospecting",
+    "GPT sales automation",
+    "AI for sales reps",
 ]
 
-# Score boosters — story is more relevant if its text matches these
+# Score boosters / penalties
 RELEVANT_TERMS = [
-    "enterprise", "B2B", "high-ticket", "upmarket",
-    "outbound", "cold email", "sales rep", "SDR", "AE",
-    "revenue", "ARR", "MRR", "deal", "pipeline",
-    "agent", "automation", "augmented",
+    "enterprise", "b2b", "outbound", "cold email", "sales rep", "sdr", "ae",
+    "revenue", "arr", "mrr", "deal", "pipeline", "agent", "automation",
+    "augmented", "prospecting", "lead", "crm", "go-to-market", "gtm",
 ]
-
-# Score penalties — these usually mean it's not what she's looking for
 IRRELEVANT_TERMS = [
-    "show hn", "ask hn",                # community posts, often noise
-    "show off", "open source",           # often hobby projects
-    "image generation", "stable diffusion",
-    "voice clone", "deepfake",
+    "show hn", "ask hn", "image generation", "stable diffusion",
+    "voice clone", "deepfake", "music generation", "tts ",
+    "open source side project",
 ]
 
 
 def _fetch_hn(query: str, since_unix: int, max_hits: int = 20) -> list[dict]:
-    """Return HN stories matching the query, posted after since_unix."""
     params = {
         "query": query,
         "tags": "story",
@@ -81,23 +160,21 @@ def _fetch_hn(query: str, since_unix: int, max_hits: int = 20) -> list[dict]:
 
 
 def _score(story: dict) -> int:
-    """Higher score = more relevant. Combines HN points + keyword signals."""
     base = int(story.get("points") or 0)
     text = " ".join([
         story.get("title", "") or "",
         story.get("story_text", "") or "",
     ]).lower()
     for term in RELEVANT_TERMS:
-        if term.lower() in text:
+        if term in text:
             base += 5
     for term in IRRELEVANT_TERMS:
-        if term.lower() in text:
-            base -= 20
+        if term in text:
+            base -= 25
     return base
 
 
 def gather_candidates() -> list[dict]:
-    """Run all queries, dedupe by URL, return top-ranked candidates."""
     since = int((datetime.now(timezone.utc) - timedelta(days=10)).timestamp())
     seen: dict[str, dict] = {}
     for q in QUERIES:
@@ -115,79 +192,213 @@ def gather_candidates() -> list[dict]:
             seen[url_key] = h
     out = list(seen.values())
     out.sort(key=lambda h: -h["_score"])
-    # Drop low-confidence
-    return [h for h in out if h["_score"] >= 5][:10]
+    return [h for h in out if h["_score"] >= 5][:8]
 
 
-def render_sections(candidates: list[dict], week_of: date) -> list[dict]:
-    sections: list[dict] = []
-    sections.append({"kind": "heading",
-                     "text": f"AI + High-Ticket Sales Research — Week of {week_of:%b %d, %Y}"})
-    sections.append({"kind": "paragraph",
-                     "text": (
-                         "Auto-generated by reclaim/research.py — pulled from Hacker News "
-                         "stories matching AI / sales / B2B keywords over the past 10 days, "
-                         "ranked by relevance score. Treat as a starting list; verify "
-                         "anything before acting on it."
-                     )})
+def _vertical_translation_lines(vertical: dict) -> list[str]:
+    return [
+        f"Current motion: {vertical['current_motion']}",
+        f"Key pain: {vertical['key_pain']}",
+        f"Decision-maker: {vertical['decision_maker']}",
+        f"Financial consequence: {vertical['financial_consequence']}",
+        f"CFO vocabulary: {vertical['cfo_vocabulary']}",
+    ]
+
+
+def render_framework_doc_sections() -> list[dict]:
+    """Static reference doc — read once."""
+    s: list[dict] = []
+    s.append({"kind": "heading", "text": "GLP-1 Pattern — High-Ticket Offer Framework"})
+    s.append({"kind": "paragraph", "text":
+        "Read this first. Don't write a single proposal without it."})
+
+    s.append({"kind": "subheading", "text": "Why GLP-1s grew like wildfire"})
+    for line in [
+        "Massive demand (60% of adults overweight).",
+        "No real supply (nothing else worked at scale).",
+        "Novel mechanism (semaglutide cleared FDA 2017, mass-marketed 2022).",
+        "Three conditions live at once. That's the textbook gold-mine offer.",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    s.append({"kind": "subheading", "text": "Translating the pattern to B2B"})
+    for line in [
+        "Look for a market where massive demand already exists, current supply is broken or non-existent, "
+        "and a new mechanism solves it differently than anyone else.",
+        "The mechanism doesn't have to be new IN THE WORLD. Just new IN THE MARKET.",
+        "Cold outbound is commoditized in SaaS (Apollo, Smartlead, everyone). It's NOVEL in boutique M&A, "
+        "yacht brokerage, private wealth, family offices.",
+        "Same software. Same skill. Same mechanics. Different market. Different reception entirely.",
+        "That's the arbitrage of 2026.",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    s.append({"kind": "subheading", "text": "Capital-rich verticals worth targeting"})
+    for v in CAPITAL_RICH_VERTICALS:
+        s.append({"kind": "paragraph", "text": f"• {v['name']}"})
+        for line in _vertical_translation_lines(v):
+            s.append({"kind": "bullet", "text": "    " + line})
+
+    s.append({"kind": "subheading", "text": "Why $15K/mo operators stay stuck"})
+    s.append({"kind": "paragraph", "text":
+        "Technical mastery is what adjacent service providers respect. It doesn't move "
+        "CFOs, operating partners, or investment committees. They only buy the elimination "
+        "of a specific threat tied to capital movement."})
+    s.append({"kind": "paragraph", "text":
+        "Most B2B operators have confused the two their entire careers. An $80/hour consultant "
+        "can know more about technical execution than the $30K/month consultant. The gap in "
+        "fees isn't a gap in knowledge — it's a gap in positioning."})
+
+    s.append({"kind": "subheading", "text": "The 4 positioning elements (the only ones that matter)"})
+    for i, line in enumerate([
+        "Vocabulary of their constraint — the EXACT language their CFO uses internally. "
+        "Terms in their board reporting. Metrics that determine whether the next capital "
+        "event succeeds or fails.",
+        "Failure mode architecture — identify the operational sequence producing the failure "
+        "and why it hasn't been resolved. Don't fixate on surface pain.",
+        "Which decision-maker loses their job — corporate buyers are humans protecting "
+        "careers, bonuses, and political capital. Figure out whose ass is on the line.",
+        "Financial consequence of inaction — what does another quarter of this problem cost "
+        "in dollar terms? How does that number interact with their debt facility, "
+        "acquisition cycle, or investor reporting?",
+    ], 1):
+        s.append({"kind": "bullet", "text": f"#{i}: {line}"})
+
+    s.append({"kind": "subheading", "text": "How fast you can build all four"})
+    for line in [
+        "72 hours, even in a vertical you've never sold in. McKinsey associates rotate "
+        "industries every project — they don't anchor on technical knowledge, they anchor "
+        "on translating any problem into risk-mitigation + capital-constraint + "
+        "consequence-chain language.",
+        "Three years mastering a platform = compounding in a commodity.",
+        "72 hours learning how a Series B SaaS company's churn rate affects its ability to "
+        "renegotiate its credit facility = enter a room where almost no one speaks the same language.",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    s.append({"kind": "subheading", "text": "The weekly drill (apply this to each candidate)"})
+    for line in [
+        "What does the tool do (mechanism)?",
+        "In its current market, how commoditized is the mechanism?",
+        "Which capital-rich vertical above would still find this mechanism novel?",
+        "Pick ONE vertical and write all 4 positioning elements for the offer.",
+        "What does the resulting offer look like — pricing, deliverables, expected fee?",
+    ]:
+        s.append({"kind": "bullet", "text": line})
+
+    return s
+
+
+def render_weekly_sections(candidates: list[dict], week_of: date) -> list[dict]:
+    s: list[dict] = []
+    s.append({"kind": "heading",
+              "text": f"AI + High-Ticket Sales — Week of {week_of:%b %d, %Y}"})
+    s.append({"kind": "paragraph", "text":
+        "Auto-generated. Apply the GLP-1 framework (see the static Framework doc in this folder) "
+        "to each candidate below. Goal: find one mechanism this week that's commoditized in one "
+        "market but novel in a capital-rich vertical."})
 
     if not candidates:
-        sections.append({"kind": "paragraph",
-                         "text": "(No high-confidence candidates surfaced this week. "
-                                 "Try widening QUERIES in reclaim/research.py.)"})
-        return sections
+        s.append({"kind": "paragraph", "text":
+            "(No high-confidence candidates surfaced this week. Try widening QUERIES in "
+            "reclaim/research.py.)"})
+        return s
 
-    sections.append({"kind": "subheading", "text": "Top candidates"})
+    s.append({"kind": "subheading", "text": "This week's candidates"})
+
     for i, c in enumerate(candidates, 1):
-        title = c.get("title", "(no title)").strip()
+        title = (c.get("title") or "(no title)").strip()
         url = c.get("url") or f"https://news.ycombinator.com/item?id={c.get('objectID')}"
         points = int(c.get("points") or 0)
         comments = int(c.get("num_comments") or 0)
         score = c.get("_score", 0)
         author = c.get("author") or "?"
-        created = c.get("created_at", "")[:10]
-        sections.append({
-            "kind": "bullet",
-            "text": (
-                f"{title}\n"
-                f"   {url}\n"
-                f"   HN points: {points} · comments: {comments} · relevance score: {score} · "
-                f"posted {created} by @{author} · matched query: {c.get('_matched_query')!r}"
-            ),
-        })
+        created = (c.get("created_at") or "")[:10]
 
-    sections.append({"kind": "subheading", "text": "Notes / next steps"})
-    sections.append({"kind": "bullet", "text": "Which of these match the $25k–$100k upfront model?"})
-    sections.append({"kind": "bullet", "text": "Any worth a 1-hour deep dive next week?"})
-    sections.append({"kind": "bullet", "text": "What's the pricing / sales motion for the most interesting one?"})
-    return sections
+        s.append({"kind": "subheading", "text": f"{i}. {title}"})
+        s.append({"kind": "paragraph", "text": f"Link: {url}"})
+        s.append({"kind": "paragraph", "text":
+            f"Signal: HN points {points} · comments {comments} · relevance score {score} · "
+            f"posted {created} by @{author} · matched query: {c.get('_matched_query')!r}"})
+
+        # What does it do (placeholder — you fill in after reading the link)
+        s.append({"kind": "paragraph", "text": "What it does (fill in after reading):"})
+        s.append({"kind": "bullet", "text": "Core mechanism: ___"})
+        s.append({"kind": "bullet", "text": "Current target market: ___"})
+        s.append({"kind": "bullet", "text": "Current pricing tier: ___"})
+        s.append({"kind": "bullet", "text": "How commoditized is it in that market: ___"})
+
+        # Translation hypothesis
+        s.append({"kind": "paragraph", "text":
+            "Translation hypothesis — which capital-rich vertical above would find this mechanism NOVEL? "
+            "Pick one and complete the 4 positioning elements:"})
+        s.append({"kind": "bullet", "text": "Vertical: ___ (pick from framework doc)"})
+        s.append({"kind": "bullet", "text": "#1 CFO vocabulary of constraint: ___"})
+        s.append({"kind": "bullet", "text": "#2 Failure mode architecture: ___"})
+        s.append({"kind": "bullet", "text": "#3 Decision-maker whose job is on the line: ___"})
+        s.append({"kind": "bullet", "text":
+            "#4 Financial consequence of inaction (quantified, in dollars): ___"})
+
+        s.append({"kind": "paragraph", "text": "Resulting offer hypothesis:"})
+        s.append({"kind": "bullet", "text": "Price (target $25K-$100K upfront + backend %): ___"})
+        s.append({"kind": "bullet", "text": "Deliverable / scope: ___"})
+        s.append({"kind": "bullet", "text": "Expected sales cycle: ___"})
+        s.append({"kind": "bullet", "text": "First 5 ideal-customer companies to outreach: ___"})
+
+    s.append({"kind": "subheading", "text": "End-of-session decision"})
+    s.append({"kind": "bullet", "text": "Top candidate to deep-dive next week: ___"})
+    s.append({"kind": "bullet", "text": "If high-conviction, draft outreach script and pick 5 targets."})
+    s.append({"kind": "bullet", "text": "If low-conviction across the board, broaden search queries or "
+                                       "switch vertical focus."})
+
+    return s
+
+
+def _ensure_framework_doc(folder_id: str, access_token: str) -> str:
+    """Create the framework reference doc once if it doesn't exist. Returns URL."""
+    # See if a framework doc is already in the folder
+    q = (f"'{folder_id}' in parents and name='{FRAMEWORK_DOC_TITLE}' "
+         f"and mimeType='application/vnd.google-apps.document' and trashed=false")
+    out = google_docs._api(
+        "GET", google_docs.DRIVE_API, "/files", access_token,
+        params={"q": q, "fields": "files(id,name)"},
+    )
+    existing = out.get("files", [])
+    if existing:
+        return f"https://docs.google.com/document/d/{existing[0]['id']}/edit"
+    doc = google_docs.create_doc(FRAMEWORK_DOC_TITLE, access_token)
+    google_docs.write_doc(doc["doc_id"], render_framework_doc_sections(), access_token)
+    google_docs.move_to_folder(doc["doc_id"], folder_id, access_token)
+    return doc["url"]
 
 
 def generate() -> dict:
-    """Run the weekly research pipeline. Returns metadata about the created doc."""
     token = google_docs.get_access_token("personal2")
 
+    folder = google_docs.get_or_create_folder(FOLDER_NAME, token)
+    framework_url = _ensure_framework_doc(folder["folder_id"], token)
+
     today = datetime.now(DEFAULT_TZ).date()
-    # Monday of the current week
     monday = today - timedelta(days=today.weekday())
-    title = f"AI + High-Ticket Sales Research — Week of {monday:%b %d, %Y}"
+    title = f"Week of {monday:%b %d, %Y} — AI + High-Ticket Sales"
 
     candidates = gather_candidates()
-    sections = render_sections(candidates, monday)
-
+    sections = render_weekly_sections(candidates, monday)
     doc = google_docs.create_doc(title, token)
     google_docs.write_doc(doc["doc_id"], sections, token)
+    google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
 
     result = {
         "generated_at": datetime.now(DEFAULT_TZ).isoformat(),
         "week_of": monday.isoformat(),
-        "title": title,
-        "doc_url": doc["url"],
-        "doc_id": doc["doc_id"],
+        "folder_url": folder["url"],
+        "framework_doc_url": framework_url,
+        "week_doc_title": title,
+        "week_doc_url": doc["url"],
         "candidate_count": len(candidates),
         "candidates_summary": [
-            {"title": c.get("title", "")[:80], "score": c["_score"],
-             "url": c.get("url", "")[:120]}
+            {"title": (c.get("title") or "")[:80], "score": c["_score"],
+             "url": (c.get("url") or "")[:120]}
             for c in candidates
         ],
     }

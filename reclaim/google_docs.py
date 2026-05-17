@@ -115,3 +115,61 @@ def make_doc_link_shareable(doc_id: str, access_token: str) -> str:
         body={"role": "reader", "type": "anyone"},
     )
     return f"https://docs.google.com/document/d/{doc_id}/edit"
+
+
+# --- folder management (drive.file scope, app-created files only) -----------
+
+def find_folder_by_name(name: str, access_token: str) -> str | None:
+    """Return the folder ID if a folder with this exact name (created by
+    this app) exists. None otherwise.
+
+    With drive.file scope we can only see files this OAuth client created,
+    so this won't find folders the user made manually.
+    """
+    q = (f"mimeType='application/vnd.google-apps.folder' "
+         f"and name='{name}' and trashed=false")
+    out = _api(
+        "GET", DRIVE_API, "/files", access_token,
+        params={"q": q, "fields": "files(id,name)"},
+    )
+    files = out.get("files", [])
+    return files[0]["id"] if files else None
+
+
+def create_folder(name: str, access_token: str) -> dict:
+    """Create a Drive folder. Returns {folder_id, url}."""
+    out = _api(
+        "POST", DRIVE_API, "/files", access_token,
+        body={
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+        },
+    )
+    fid = out["id"]
+    return {"folder_id": fid, "name": name,
+            "url": f"https://drive.google.com/drive/folders/{fid}"}
+
+
+def get_or_create_folder(name: str, access_token: str) -> dict:
+    fid = find_folder_by_name(name, access_token)
+    if fid:
+        return {"folder_id": fid, "name": name,
+                "url": f"https://drive.google.com/drive/folders/{fid}",
+                "existed": True}
+    folder = create_folder(name, access_token)
+    folder["existed"] = False
+    return folder
+
+
+def move_to_folder(file_id: str, folder_id: str, access_token: str) -> None:
+    """Move a file into a folder by replacing its parents."""
+    # First get current parents
+    info = _api(
+        "GET", DRIVE_API, f"/files/{file_id}", access_token,
+        params={"fields": "parents"},
+    )
+    current = ",".join(info.get("parents", []))
+    _api(
+        "PATCH", DRIVE_API, f"/files/{file_id}", access_token,
+        params={"addParents": folder_id, "removeParents": current or "root"},
+    )
