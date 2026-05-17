@@ -40,6 +40,14 @@ jobs:
           CALENDAR_REFRESH_TOKEN_PERSONAL2: ${{ secrets.CALENDAR_REFRESH_TOKEN_PERSONAL2 }}
         run: |
           mkdir -p "$HOME/.config/reclaim/tokens"
+          # Sanity-check secret presence (length only, never the value).
+          echo "=== Secret lengths (empty = missing/wrong name) ==="
+          echo "GOOGLE_OAUTH_CLIENT:               ${#GOOGLE_OAUTH_CLIENT}"
+          echo "GMAIL_REFRESH_TOKEN:               ${#GMAIL_REFRESH_TOKEN}"
+          echo "GMAIL_REFRESH_TOKEN_PERSONAL2:     ${#GMAIL_REFRESH_TOKEN_PERSONAL2}"
+          echo "CALENDAR_REFRESH_TOKEN:            ${#CALENDAR_REFRESH_TOKEN}"
+          echo "CALENDAR_REFRESH_TOKEN_PERSONAL2:  ${#CALENDAR_REFRESH_TOKEN_PERSONAL2}"
+          echo "==================================================="
           printf '%s' "$GOOGLE_OAUTH_CLIENT" > "$HOME/.config/reclaim/gmail_credentials.json"
           printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN" \
             > "$HOME/.config/reclaim/tokens/default.json"
@@ -51,6 +59,9 @@ jobs:
             > "$HOME/.config/reclaim/tokens/calendar-personal2.json"
           chmod 600 "$HOME/.config/reclaim/tokens/"*.json
           chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
+          # Confirm each JSON file is non-trivially sized.
+          echo "=== Token file sizes (bytes) ==="
+          wc -c "$HOME/.config/reclaim/tokens/"*.json "$HOME/.config/reclaim/gmail_credentials.json"
 
       - name: Scan default Gmail (muhammadaziza732) -> default calendar
         run: |
