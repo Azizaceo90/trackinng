@@ -64,14 +64,6 @@ habits:
     priority: P1
     calendar: personal2
 
-  - id: quran-personal
-    title: "📖 Quran (Personal)"
-    duration: 30m
-    days: [mon, tue, wed, thu, fri, sat, sun]
-    ideal_window: { start: "06:00", end: "06:30" }
-    priority: P1
-    calendar: personal2
-
   - id: skincare-routine
     title: "✨ Skincare Routine"
     duration: 30m
