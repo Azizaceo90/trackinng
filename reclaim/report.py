@@ -209,6 +209,70 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_goals() -> list[dict]:
+    """Read config/goals.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/goals.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("goals", []) or []
+
+
+def _render_goal_block(goals: list[dict]) -> str:
+    """Render the goal-tracking section for the HTML dashboard."""
+    from datetime import date as _date
+    if not goals:
+        return ""
+    today = _date.today()
+    rows = []
+    for g in goals:
+        title = g.get("title", "Goal")
+        target = int(g.get("target", 1))
+        current = int(g.get("current", 0))
+        metric = g.get("metric", "items")
+        try:
+            start = _date.fromisoformat(g["start"])
+            deadline = _date.fromisoformat(g["deadline"])
+        except (KeyError, ValueError):
+            continue
+        total_days = (deadline - start).days or 1
+        elapsed_days = max(0, (today - start).days)
+        days_left = max(0, (deadline - today).days)
+        pct_elapsed = min(100, int(elapsed_days / total_days * 100))
+        pct_done = min(100, int(current / target * 100)) if target else 0
+        expected = round(elapsed_days / total_days * target, 1)
+        status = "🟢 ahead" if current >= expected else (
+                 "🟡 on pace" if current >= expected - 1 else "🔴 behind")
+        rows.append(f"""
+  <div class="goal">
+    <div class="goal-title">{title}</div>
+    <div class="goal-numbers">
+      <span class="goal-current">{current}</span>
+      <span class="goal-sep">/</span>
+      <span class="goal-target">{target}</span>
+      <span class="goal-metric">{metric}</span>
+      <span class="goal-status">{status}</span>
+    </div>
+    <div class="goal-bar"><div class="goal-bar-fill" style="width: {pct_done}%"></div></div>
+    <div class="goal-meta">
+      {days_left} days left · expected pace: {expected} · started {start:%b %d} · due {deadline:%b %d}
+    </div>
+  </div>""")
+    return f"""
+  <section class="goals">
+    <h2>Career goals</h2>
+    {''.join(rows)}
+  </section>"""
+
+
 def render_html(report: Report) -> str:
     """Self-contained HTML dashboard. Chart.js is pulled from a CDN.
 
@@ -291,6 +355,25 @@ def render_html(report: Report) -> str:
         text-transform: uppercase; letter-spacing: .03em; color: #555; }}
   tr.total td {{ background: #f9fafb; border-top: 2px solid #e5e5e5; }}
   footer {{ color: #999; font-size: .75rem; margin-top: 2rem; text-align: center; }}
+  .goals {{ background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white; padding: 1.25rem 1.5rem; border-radius: 12px;
+            margin-bottom: 1.5rem; }}
+  .goals h2 {{ font-size: .8rem; margin: 0 0 .75rem; text-transform: uppercase;
+              letter-spacing: .08em; opacity: .85; }}
+  .goal {{ margin-bottom: 1rem; }}
+  .goal:last-child {{ margin-bottom: 0; }}
+  .goal-title {{ font-size: 1.05rem; font-weight: 600; margin-bottom: .35rem; }}
+  .goal-numbers {{ display: flex; align-items: baseline; gap: .35rem; margin-bottom: .5rem; }}
+  .goal-current {{ font-size: 2.5rem; font-weight: 700; line-height: 1; }}
+  .goal-sep    {{ font-size: 1.5rem; opacity: .6; }}
+  .goal-target {{ font-size: 1.5rem; font-weight: 600; opacity: .9; }}
+  .goal-metric {{ font-size: .85rem; opacity: .75; margin-left: .25rem; }}
+  .goal-status {{ margin-left: auto; font-size: .85rem; }}
+  .goal-bar {{ height: 8px; background: rgba(255,255,255,.2);
+              border-radius: 4px; overflow: hidden; }}
+  .goal-bar-fill {{ height: 100%; background: white; border-radius: 4px;
+                   transition: width .3s ease; }}
+  .goal-meta {{ font-size: .75rem; opacity: .8; margin-top: .35rem; }}
 </style>
 </head>
 <body>
@@ -305,6 +388,8 @@ def render_html(report: Report) -> str:
     <div class="stat"><div class="v">{meet_share:.0f}%</div><div class="l">Meeting load</div></div>
     <div class="stat"><div class="v">{busiest.day:%a %m/%d}</div><div class="l">Busiest day</div></div>
   </div>
+
+  {_render_goal_block(_load_goals())}
 
   <canvas id="chart" height="120"></canvas>
 
