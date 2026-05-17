@@ -76,7 +76,7 @@ habits:
     title: "✨ Skincare Routine"
     duration: 30m
     days: [mon, tue, wed, thu, fri, sat, sun]
-    ideal_window: { start: "07:00", end: "07:30" }
+    ideal_window: { start: "08:00", end: "08:30" }
     priority: P2
     calendar: personal2
 
