@@ -350,7 +350,16 @@ def render_weekly_sections(week_of: date) -> tuple[list[dict], list[dict]]:
     # --- Each vertical gets its own block ---
     for v in verticals:
         name = v.get("vertical", "?")
-        s.append({"kind": "heading", "text": name})
+        industry = v.get("industry", "")
+        s.append({"kind": "heading", "text": f"{name}" + (f"  ({industry})" if industry else "")})
+
+        # Economics summary line — net margin + deal size
+        margin = v.get("typical_net_margin", "")
+        deal_size = v.get("typical_deal_size", "")
+        if margin or deal_size:
+            s.append({"kind": "paragraph", "text":
+                f"💰 Net margin: {margin or '—'}  ·  Typical deal: {deal_size or '—'}"})
+
         s.append({"kind": "paragraph", "text": (v.get("description", "") or "").strip()})
 
         companies = v.get("companies", []) or []
