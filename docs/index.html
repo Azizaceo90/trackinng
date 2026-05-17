@@ -29,37 +29,306 @@
         text-transform: uppercase; letter-spacing: .03em; color: #555; }
   tr.total td { background: #f9fafb; border-top: 2px solid #e5e5e5; }
   footer { color: #999; font-size: .75rem; margin-top: 2rem; text-align: center; }
+  .goals { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white; padding: 1.25rem 1.5rem; border-radius: 12px;
+            margin-bottom: 1.5rem; }
+  .goals h2 { font-size: .8rem; margin: 0 0 .75rem; text-transform: uppercase;
+              letter-spacing: .08em; opacity: .85; }
+  .goal { margin-bottom: 1rem; }
+  .goal:last-child { margin-bottom: 0; }
+  .goal-title { font-size: 1.05rem; font-weight: 600; margin-bottom: .35rem; }
+  .goal-numbers { display: flex; align-items: baseline; gap: .35rem; margin-bottom: .5rem; }
+  .goal-current { font-size: 2.5rem; font-weight: 700; line-height: 1; }
+  .goal-sep    { font-size: 1.5rem; opacity: .6; }
+  .goal-target { font-size: 1.5rem; font-weight: 600; opacity: .9; }
+  .goal-metric { font-size: .85rem; opacity: .75; margin-left: .25rem; }
+  .goal-status { margin-left: auto; font-size: .85rem; }
+  .goal-bar { height: 8px; background: rgba(255,255,255,.2);
+              border-radius: 4px; overflow: hidden; }
+  .goal-bar-fill { height: 100%; background: white; border-radius: 4px;
+                   transition: width .3s ease; }
+  .goal-meta { font-size: .75rem; opacity: .8; margin-top: .35rem; }
+  .reflection { background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }
+  .reflection-header { display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }
+  .reflection h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }
+  .reflection-week { font-size: .75rem; color: #888; }
+  .reflection-cols { display: grid; grid-template-columns: 1fr 1fr 1fr;
+                      gap: 1.25rem; }
+  @media (max-width: 720px) { .reflection-cols { grid-template-columns: 1fr; } }
+  .reflection-col h3 { font-size: .85rem; margin: 0 0 .5rem;
+                        font-weight: 600; color: #444; }
+  .reflection-col ul { margin: 0; padding-left: 1.1rem; color: #333;
+                       font-size: .85rem; line-height: 1.4; }
+  .reflection-col li { margin-bottom: .35rem; }
+  .reflection-col .empty { color: #aaa; font-style: italic; font-size: .85rem; margin: 0; }
+  .reflection-col.worked h3 { color: #16a34a; }
+  .reflection-col.didnt  h3 { color: #dc2626; }
+  .reflection-col.nxt    h3 { color: #2563eb; }
+  .funnel { background: white; border: 1px solid #e5e5e5;
+             border-radius: 12px; padding: 1.25rem 1.5rem;
+             margin-bottom: 1.5rem; }
+  .funnel-header { display: flex; align-items: baseline; justify-content: space-between;
+                    margin-bottom: 1rem; }
+  .funnel h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                letter-spacing: .08em; color: #666; }
+  .funnel-window { font-size: .75rem; color: #888; }
+  .funnel-grid { display: grid; grid-template-columns: repeat(4, 1fr);
+                  gap: .75rem; }
+  @media (max-width: 720px) { .funnel-grid { grid-template-columns: repeat(2, 1fr); } }
+  .fn-box { text-align: center; padding: .85rem .5rem;
+             background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; }
+  .fn-v { font-size: 2.25rem; font-weight: 700; line-height: 1; }
+  .fn-l { font-size: .7rem; color: #666; margin-top: .35rem;
+           text-transform: uppercase; letter-spacing: .05em; }
+  .checklist { background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }
+  .checklist-header { display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }
+  .checklist h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }
+  .checklist ul { list-style: none; padding: 0; margin: 0; }
+  .checklist li { padding: .45rem 0; border-bottom: 1px solid #f3f3f3; }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist label { display: flex; align-items: center; gap: .65rem; cursor: pointer;
+                      font-size: .9rem; }
+  .checklist input[type=checkbox] { width: 1.05rem; height: 1.05rem; cursor: pointer;
+                                     accent-color: #16a34a; flex-shrink: 0; }
+  .checklist input[type=checkbox]:checked + .cl-label { text-decoration: line-through;
+                                                          color: #999; }
+  .checklist li.cl-done { display: none; }
+  .checklist.show-done li.cl-done { display: list-item; opacity: .55; }
+  .checklist .cl-hint { font-size: .7rem; color: #aaa; margin: .75rem 0 0; }
+  .checklist code { background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }
+  .cl-actions { display: flex; gap: .35rem; }
+  #cl-count { font-size: .7rem; color: #aaa; margin-left: .3rem; font-weight: normal;
+               letter-spacing: 0; text-transform: none; }
+  #cl-reset, #cl-toggle-done {
+    background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+    font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  #cl-reset:hover, #cl-toggle-done:hover { background: #f5f5f5; }
 </style>
 </head>
 <body>
   <h1>Time report — week</h1>
-  <div class="sub">Mon May 11 → Sun May 17, 2026 · <a href="book.html">Book time with me →</a></div>
+  <div class="sub">Mon May 11 → Sun May 17, 2026 · <a href="https://calendar.app.google/fLn3bFqbPwZHFf4r9">Book time with me →</a></div>
 
   <div class="stats">
-    <div class="stat"><div class="v">3.6h</div><div class="l">Tracked</div></div>
-    <div class="stat"><div class="v">7</div><div class="l">Interviews</div></div>
+    <div class="stat"><div class="v">—</div><div class="l">Tracked</div></div>
+    <div class="stat"><div class="v">0</div><div class="l">Interviews</div></div>
     <div class="stat"><div class="v">—</div><div class="l">Focus</div></div>
     <div class="stat"><div class="v">0%</div><div class="l">Deep-work share</div></div>
-    <div class="stat"><div class="v">100%</div><div class="l">Meeting load</div></div>
-    <div class="stat"><div class="v">Thu 05/14</div><div class="l">Busiest day</div></div>
+    <div class="stat"><div class="v">0%</div><div class="l">Meeting load</div></div>
+    <div class="stat"><div class="v">Mon 05/11</div><div class="l">Busiest day</div></div>
   </div>
+
+  
+  <section class="goals">
+    <h2>Career goals</h2>
+    
+  <div class="goal">
+    <div class="goal-title">6 offers in 3 months</div>
+    <div class="goal-numbers">
+      <span class="goal-current">0</span>
+      <span class="goal-sep">/</span>
+      <span class="goal-target">6</span>
+      <span class="goal-metric">offers</span>
+      <span class="goal-status">🟢 ahead</span>
+    </div>
+    <div class="goal-bar"><div class="goal-bar-fill" style="width: 0%"></div></div>
+    <div class="goal-meta">
+      92 days left · expected pace: 0.0 · started May 17 · due Aug 17
+    </div>
+  </div>
+  </section>
+
+  
+  <section class="funnel">
+    <div class="funnel-header">
+      <h2>Job-hunt funnel</h2>
+      <span class="funnel-window">last 30 days · 1 inbox</span>
+    </div>
+    <div class="funnel-grid"><div class="fn-box"><div class="fn-v" style="color:#3b82f6">87</div><div class="fn-l">Applications</div></div><div class="fn-box"><div class="fn-v" style="color:#22c55e">10</div><div class="fn-l">Interviews</div></div><div class="fn-box"><div class="fn-v" style="color:#f59e0b">0</div><div class="fn-l">Offers</div></div><div class="fn-box"><div class="fn-v" style="color:#ef4444">46</div><div class="fn-l">Rejections</div></div></div>
+  </section>
+
+  
+  <section class="checklist daily-checklist" data-today="2026-05-17">
+    <div class="checklist-header">
+      <h2>Daily routine <span id="dc-count"></span></h2>
+      <div class="cl-actions">
+        <button id="dc-toggle-done" type="button">show completed</button>
+      </div>
+    </div>
+    <ul id="dc-list"><li><label><input type="checkbox" data-dc="fajr"><span class="cl-label">🌙 Fajr prayer on time</span></label></li><li><label><input type="checkbox" data-dc="dhuhr"><span class="cl-label">☀️ Dhuhr prayer on time</span></label></li><li><label><input type="checkbox" data-dc="asr"><span class="cl-label">🌤️ Asr prayer on time</span></label></li><li><label><input type="checkbox" data-dc="maghrib"><span class="cl-label">🌅 Maghrib prayer on time</span></label></li><li><label><input type="checkbox" data-dc="isha"><span class="cl-label">🌌 Isha prayer on time</span></label></li><li><label><input type="checkbox" data-dc="morning-duas"><span class="cl-label">📿 Morning duas (after Fajr)</span></label></li><li><label><input type="checkbox" data-dc="evening-duas"><span class="cl-label">📿 Evening duas (after Maghrib)</span></label></li><li><label><input type="checkbox" data-dc="workout"><span class="cl-label">💪 Workout / movement (Bike / Run / Sculpted / Gym)</span></label></li><li><label><input type="checkbox" data-dc="water"><span class="cl-label">💧 64oz water</span></label></li><li><label><input type="checkbox" data-dc="sleep"><span class="cl-label">🛌 Lights out by 11pm</span></label></li><li><label><input type="checkbox" data-dc="quran-read"><span class="cl-label">📖 10 min Qur&#x27;an reading</span></label></li><li><label><input type="checkbox" data-dc="gratitude"><span class="cl-label">✨ One gratitude before bed</span></label></li></ul>
+    <p class="cl-hint">Resets every morning. Edit items in <code>config/daily-checklist.yaml</code>.</p>
+  </section>
+
+  
+  <section class="checklist">
+    <div class="checklist-header">
+      <h2>Action items <span id="cl-count"></span></h2>
+      <div class="cl-actions">
+        <button id="cl-toggle-done" type="button">show completed</button>
+        <button id="cl-reset" type="button">reset</button>
+      </div>
+    </div>
+    <ul id="cl-list"><li><label><input type="checkbox" data-cl="thx-lcmc"><span class="cl-label">Send thank-you to LCMC (Cory Johnson / Addison Group)</span></label></li><li><label><input type="checkbox" data-cl="thx-lifemd"><span class="cl-label">Send thank-you to LifeMD (Thomas Simmons)</span></label></li><li><label><input type="checkbox" data-cl="thx-strala"><span class="cl-label">Send thank-you to Strala (Paul Klitzke)</span></label></li><li><label><input type="checkbox" data-cl="thx-medovent"><span class="cl-label">Send thank-you to Medovent (Priscilla Badua)</span></label></li><li><label><input type="checkbox" data-cl="thx-guidehouse"><span class="cl-label">Send thank-you to Guidehouse (DHA Team / Abby Harper)</span></label></li><li><label><input type="checkbox" data-cl="valenz-prep"><span class="cl-label">Prep for Valenz interview Tue 11am — review Clinical Bill Review Analyst JD, STAR stories</span></label></li><li><label><input type="checkbox" data-cl="ccs-study"><span class="cl-label">Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</span></label></li><li><label><input type="checkbox" data-cl="tasks-yaml"><span class="cl-label">Fill in real tasks in config/tasks.yaml (replace placeholders)</span></label></li><li><label><input type="checkbox" data-cl="apply-5"><span class="cl-label">Apply to 5 new jobs this week</span></label></li></ul>
+    <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
+  </section>
+
+  
+  <section class="reflection">
+    <div class="reflection-header">
+      <h2>Weekly reflection</h2>
+      <span class="reflection-week">week of 2026-05-11</span>
+    </div>
+    <div class="reflection-cols">
+      <div class="reflection-col worked">
+        <h3>✅ What worked</h3>
+        <ul class="worked-list"><li>7 interviews — strong top-of-funnel volume</li><li>Valenz interview confirmed via auto-ingest from HTML-only email</li><li>Got skincare / fitness / spiritual routine on the calendar</li></ul>
+      </div>
+      <div class="reflection-col didnt">
+        <h3>❌ What didn't</h3>
+        <ul class="didnt-list"><li>0 focus blocks all week — 100% meeting load is unsustainable</li><li>No thank-yous sent after Thursday&#x27;s 4 back-to-back interviews</li><li>Plan-the-day and Foundations of Al-Islam collided at 9am</li></ul>
+      </div>
+      <div class="reflection-col nxt">
+        <h3>➡️ Next week</h3>
+        <ul class="nxt-list"><li>Send thank-yous to LCMC / LifeMD / Strala / Medovent / Guidehouse</li><li>Block 1h/day cert study (CCS practice exam) Mon-Fri mornings</li><li>Prepare for Valenz Tue 11am: review Clinical Bill Review Analyst job description, prep STAR stories</li></ul>
+      </div>
+    </div>
+  </section>
 
   <canvas id="chart" height="120"></canvas>
 
   <table>
     <thead><tr><th>Day</th><th>Focus</th><th>Meetings</th><th>Interviews</th><th>Habits</th><th>Tasks</th><th>Buffers</th><th>Other</th><th>Total</th></tr></thead>
-    <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>0.2h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.2h</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>0.5h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.5h</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>0.5h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>0.5h</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>2.3h</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>2.3h</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>3.6h</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>3.6h</strong></td></tr></tbody>
+    <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td></tr></tbody>
   </table>
 
-  <footer>Generated 2026-05-16 20:39 · <code>reclaim report --format html</code></footer>
+  <footer>Generated 2026-05-17 02:21 · <code>reclaim report --format html</code></footer>
 
 <script>
+// --- Checklist: persist check state, hide done items by default ---
+(function() {
+  const KEY = "reclaim-checklist-state";
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+  }
+  function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+  const state = load();
+  const checklistEl = document.querySelector('.checklist');
+  const counter = document.getElementById('cl-count');
+  const toggleBtn = document.getElementById('cl-toggle-done');
+
+  function updateCount() {
+    const all = document.querySelectorAll('.checklist input[type=checkbox]');
+    const done = document.querySelectorAll('.checklist input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${remaining} of ${all.length})`;
+    if (toggleBtn) toggleBtn.textContent =
+      checklistEl.classList.contains('show-done') ? `hide completed (${done.length})`
+                                                  : `show completed (${done.length})`;
+  }
+
+  function applyDoneClass(cb) {
+    const li = cb.closest('li');
+    if (!li) return;
+    li.classList.toggle('cl-done', cb.checked);
+  }
+
+  document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {
+    const id = cb.getAttribute('data-cl');
+    if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
+    cb.addEventListener('change', () => {
+      state[id] = cb.checked;
+      save(state);
+      applyDoneClass(cb);
+      updateCount();
+    });
+  });
+
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {
+    checklistEl.classList.toggle('show-done');
+    updateCount();
+  });
+
+  const resetBtn = document.getElementById('cl-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {
+      cb.checked = false;
+      applyDoneClass(cb);
+    });
+    updateCount();
+  });
+
+  updateCount();
+})();
+
+// --- Daily checklist: state keyed by today's date so it resets each morning ---
+(function() {
+  const dcEl = document.querySelector('.daily-checklist');
+  if (!dcEl) return;
+  const today = dcEl.getAttribute('data-today');
+  const KEY = "reclaim-daily-" + today;
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; }
+  }
+  function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  // Garbage-collect any other reclaim-daily-* keys (yesterday and earlier).
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith("reclaim-daily-") && k !== KEY) localStorage.removeItem(k);
+  });
+
+  const state = load();
+  const counter = document.getElementById('dc-count');
+  const toggleBtn = document.getElementById('dc-toggle-done');
+
+  function updateCount() {
+    const all = dcEl.querySelectorAll('input[type=checkbox]');
+    const done = dcEl.querySelectorAll('input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${remaining} of ${all.length})`;
+    if (toggleBtn) toggleBtn.textContent =
+      dcEl.classList.contains('show-done') ? `hide completed (${done.length})`
+                                           : `show completed (${done.length})`;
+  }
+  function applyDoneClass(cb) {
+    const li = cb.closest('li');
+    if (li) li.classList.toggle('cl-done', cb.checked);
+  }
+  dcEl.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    const id = cb.getAttribute('data-dc');
+    if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
+    cb.addEventListener('change', () => {
+      state[id] = cb.checked;
+      save(state);
+      applyDoneClass(cb);
+      updateCount();
+    });
+  });
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {
+    dcEl.classList.toggle('show-done');
+    updateCount();
+  });
+  updateCount();
+})();
+
 const ctx = document.getElementById('chart').getContext('2d');
 new Chart(ctx, {
   type: 'bar',
   data: {
     labels: ["Mon 05/11", "Tue 05/12", "Wed 05/13", "Thu 05/14", "Fri 05/15", "Sat 05/16", "Sun 05/17"],
-    datasets: [{"label": "Focus", "backgroundColor": "#22c55e", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Meetings", "backgroundColor": "#3b82f6", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Interviews", "backgroundColor": "#ef4444", "data": [0.25, 0.5, 0.5, 2.33, 0.0, 0.0, 0.0]}, {"label": "Habits", "backgroundColor": "#a855f7", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Tasks", "backgroundColor": "#f59e0b", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Buffers", "backgroundColor": "#6b7280", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Other", "backgroundColor": "#9ca3af", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}]
+    datasets: [{"label": "Focus", "backgroundColor": "#22c55e", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Meetings", "backgroundColor": "#3b82f6", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Interviews", "backgroundColor": "#ef4444", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Habits", "backgroundColor": "#a855f7", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Tasks", "backgroundColor": "#f59e0b", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Buffers", "backgroundColor": "#6b7280", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"label": "Other", "backgroundColor": "#9ca3af", "data": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}]
   },
   options: {
     responsive: true,

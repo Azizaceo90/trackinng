@@ -209,6 +209,254 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_daily_checklist() -> dict | None:
+    """Read config/daily-checklist.yaml. Returns the parsed dict or None."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return None
+    p = Path("config/daily-checklist.yaml")
+    if not p.exists():
+        return None
+    try:
+        return (yaml.safe_load(p.read_text()) or {}).get("daily_checklist")
+    except Exception:
+        return None
+
+
+def _render_daily_checklist_block(cfg: dict | None) -> str:
+    import html as _html
+    from datetime import date as _date
+    if not cfg:
+        return ""
+    today = _date.today()
+    weekday = today.strftime("%a").lower()[:3]   # mon, tue, ...
+    show_on = [d.lower() for d in (cfg.get("show_on_days") or [])]
+    if show_on and weekday not in show_on:
+        return ""
+    items = cfg.get("items", []) or []
+    if not items:
+        return ""
+    lis = "".join(
+        f'<li><label><input type="checkbox" data-dc="{_html.escape(str(it.get("id","")))}">'
+        f'<span class="cl-label">{_html.escape(str(it.get("label","")))}</span></label></li>'
+        for it in items
+    )
+    return f"""
+  <section class="checklist daily-checklist" data-today="{today.isoformat()}">
+    <div class="checklist-header">
+      <h2>Daily routine <span id="dc-count"></span></h2>
+      <div class="cl-actions">
+        <button id="dc-toggle-done" type="button">show completed</button>
+      </div>
+    </div>
+    <ul id="dc-list">{lis}</ul>
+    <p class="cl-hint">Resets every morning. Edit items in <code>config/daily-checklist.yaml</code>.</p>
+  </section>"""
+
+
+def _load_checklist() -> list[dict]:
+    """Read config/checklist.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/checklist.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("checklist", []) or []
+
+
+def _render_checklist_block(items: list[dict]) -> str:
+    import html as _html
+    if not items:
+        return ""
+    lis = "".join(
+        f'<li><label><input type="checkbox" data-cl="{_html.escape(str(it.get("id","")))}">'
+        f'<span class="cl-label">{_html.escape(str(it.get("label","")))}</span></label></li>'
+        for it in items
+    )
+    return f"""
+  <section class="checklist">
+    <div class="checklist-header">
+      <h2>Action items <span id="cl-count"></span></h2>
+      <div class="cl-actions">
+        <button id="cl-toggle-done" type="button">show completed</button>
+        <button id="cl-reset" type="button">reset</button>
+      </div>
+    </div>
+    <ul id="cl-list">{lis}</ul>
+    <p class="cl-hint">Checks stay in this browser only. Edit items in <code>config/checklist.yaml</code>.</p>
+  </section>"""
+
+
+def _load_funnel_snapshot() -> dict | None:
+    """Read config/funnel-snapshot.json. Returns None if missing."""
+    from pathlib import Path
+    p = Path("config/funnel-snapshot.json")
+    if not p.exists():
+        return None
+    import json
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def _render_funnel_block(snap: dict | None) -> str:
+    """Render the job-hunt funnel as 4 stat boxes."""
+    if not snap:
+        return ""
+    window = snap.get("window_days", 30)
+    rows = [
+        ("Applications", snap.get("applications", 0), "#3b82f6"),
+        ("Interviews",   snap.get("interviews", 0),   "#22c55e"),
+        ("Offers",       snap.get("offers", 0),       "#f59e0b"),
+        ("Rejections",   snap.get("rejections", 0),   "#ef4444"),
+    ]
+    cells = "".join(
+        f'<div class="fn-box"><div class="fn-v" style="color:{c}">{v}</div>'
+        f'<div class="fn-l">{label}</div></div>'
+        for label, v, c in rows
+    )
+    return f"""
+  <section class="funnel">
+    <div class="funnel-header">
+      <h2>Job-hunt funnel</h2>
+      <span class="funnel-window">last {window} days · 1 inbox</span>
+    </div>
+    <div class="funnel-grid">{cells}</div>
+  </section>"""
+
+
+def _load_reflections() -> list[dict]:
+    """Read config/reflections.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/reflections.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("reflections", []) or []
+
+
+def _render_reflection_block(reflections: list[dict]) -> str:
+    """Render the most recent reflection on the dashboard."""
+    import html as _html
+    if not reflections:
+        return ""
+    # Most recent first — assume newest at top of YAML
+    r = reflections[0]
+    week = r.get("week_of", "(no week)")
+    worked = r.get("worked", []) or []
+    didnt = r.get("didnt_work", []) or []
+    nxt = r.get("next_week", []) or []
+
+    def _ul(items, cls):
+        if not items:
+            return f'<p class="empty">(nothing logged)</p>'
+        lis = "".join(f"<li>{_html.escape(x)}</li>" for x in items)
+        return f'<ul class="{cls}">{lis}</ul>'
+
+    return f"""
+  <section class="reflection">
+    <div class="reflection-header">
+      <h2>Weekly reflection</h2>
+      <span class="reflection-week">week of {_html.escape(str(week))}</span>
+    </div>
+    <div class="reflection-cols">
+      <div class="reflection-col worked">
+        <h3>✅ What worked</h3>
+        {_ul(worked, "worked-list")}
+      </div>
+      <div class="reflection-col didnt">
+        <h3>❌ What didn't</h3>
+        {_ul(didnt, "didnt-list")}
+      </div>
+      <div class="reflection-col nxt">
+        <h3>➡️ Next week</h3>
+        {_ul(nxt, "nxt-list")}
+      </div>
+    </div>
+  </section>"""
+
+
+def _load_goals() -> list[dict]:
+    """Read config/goals.yaml. Returns [] if missing."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return []
+    p = Path("config/goals.yaml")
+    if not p.exists():
+        return []
+    try:
+        data = yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return []
+    return data.get("goals", []) or []
+
+
+def _render_goal_block(goals: list[dict]) -> str:
+    """Render the goal-tracking section for the HTML dashboard."""
+    from datetime import date as _date
+    if not goals:
+        return ""
+    today = _date.today()
+    rows = []
+    for g in goals:
+        title = g.get("title", "Goal")
+        target = int(g.get("target", 1))
+        current = int(g.get("current", 0))
+        metric = g.get("metric", "items")
+        try:
+            start = _date.fromisoformat(g["start"])
+            deadline = _date.fromisoformat(g["deadline"])
+        except (KeyError, ValueError):
+            continue
+        total_days = (deadline - start).days or 1
+        elapsed_days = max(0, (today - start).days)
+        days_left = max(0, (deadline - today).days)
+        pct_elapsed = min(100, int(elapsed_days / total_days * 100))
+        pct_done = min(100, int(current / target * 100)) if target else 0
+        expected = round(elapsed_days / total_days * target, 1)
+        status = "🟢 ahead" if current >= expected else (
+                 "🟡 on pace" if current >= expected - 1 else "🔴 behind")
+        rows.append(f"""
+  <div class="goal">
+    <div class="goal-title">{title}</div>
+    <div class="goal-numbers">
+      <span class="goal-current">{current}</span>
+      <span class="goal-sep">/</span>
+      <span class="goal-target">{target}</span>
+      <span class="goal-metric">{metric}</span>
+      <span class="goal-status">{status}</span>
+    </div>
+    <div class="goal-bar"><div class="goal-bar-fill" style="width: {pct_done}%"></div></div>
+    <div class="goal-meta">
+      {days_left} days left · expected pace: {expected} · started {start:%b %d} · due {deadline:%b %d}
+    </div>
+  </div>""")
+    return f"""
+  <section class="goals">
+    <h2>Career goals</h2>
+    {''.join(rows)}
+  </section>"""
+
+
 def render_html(report: Report) -> str:
     """Self-contained HTML dashboard. Chart.js is pulled from a CDN.
 
@@ -291,6 +539,90 @@ def render_html(report: Report) -> str:
         text-transform: uppercase; letter-spacing: .03em; color: #555; }}
   tr.total td {{ background: #f9fafb; border-top: 2px solid #e5e5e5; }}
   footer {{ color: #999; font-size: .75rem; margin-top: 2rem; text-align: center; }}
+  .goals {{ background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white; padding: 1.25rem 1.5rem; border-radius: 12px;
+            margin-bottom: 1.5rem; }}
+  .goals h2 {{ font-size: .8rem; margin: 0 0 .75rem; text-transform: uppercase;
+              letter-spacing: .08em; opacity: .85; }}
+  .goal {{ margin-bottom: 1rem; }}
+  .goal:last-child {{ margin-bottom: 0; }}
+  .goal-title {{ font-size: 1.05rem; font-weight: 600; margin-bottom: .35rem; }}
+  .goal-numbers {{ display: flex; align-items: baseline; gap: .35rem; margin-bottom: .5rem; }}
+  .goal-current {{ font-size: 2.5rem; font-weight: 700; line-height: 1; }}
+  .goal-sep    {{ font-size: 1.5rem; opacity: .6; }}
+  .goal-target {{ font-size: 1.5rem; font-weight: 600; opacity: .9; }}
+  .goal-metric {{ font-size: .85rem; opacity: .75; margin-left: .25rem; }}
+  .goal-status {{ margin-left: auto; font-size: .85rem; }}
+  .goal-bar {{ height: 8px; background: rgba(255,255,255,.2);
+              border-radius: 4px; overflow: hidden; }}
+  .goal-bar-fill {{ height: 100%; background: white; border-radius: 4px;
+                   transition: width .3s ease; }}
+  .goal-meta {{ font-size: .75rem; opacity: .8; margin-top: .35rem; }}
+  .reflection {{ background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }}
+  .reflection-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }}
+  .reflection h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }}
+  .reflection-week {{ font-size: .75rem; color: #888; }}
+  .reflection-cols {{ display: grid; grid-template-columns: 1fr 1fr 1fr;
+                      gap: 1.25rem; }}
+  @media (max-width: 720px) {{ .reflection-cols {{ grid-template-columns: 1fr; }} }}
+  .reflection-col h3 {{ font-size: .85rem; margin: 0 0 .5rem;
+                        font-weight: 600; color: #444; }}
+  .reflection-col ul {{ margin: 0; padding-left: 1.1rem; color: #333;
+                       font-size: .85rem; line-height: 1.4; }}
+  .reflection-col li {{ margin-bottom: .35rem; }}
+  .reflection-col .empty {{ color: #aaa; font-style: italic; font-size: .85rem; margin: 0; }}
+  .reflection-col.worked h3 {{ color: #16a34a; }}
+  .reflection-col.didnt  h3 {{ color: #dc2626; }}
+  .reflection-col.nxt    h3 {{ color: #2563eb; }}
+  .funnel {{ background: white; border: 1px solid #e5e5e5;
+             border-radius: 12px; padding: 1.25rem 1.5rem;
+             margin-bottom: 1.5rem; }}
+  .funnel-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                    margin-bottom: 1rem; }}
+  .funnel h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                letter-spacing: .08em; color: #666; }}
+  .funnel-window {{ font-size: .75rem; color: #888; }}
+  .funnel-grid {{ display: grid; grid-template-columns: repeat(4, 1fr);
+                  gap: .75rem; }}
+  @media (max-width: 720px) {{ .funnel-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+  .fn-box {{ text-align: center; padding: .85rem .5rem;
+             background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; }}
+  .fn-v {{ font-size: 2.25rem; font-weight: 700; line-height: 1; }}
+  .fn-l {{ font-size: .7rem; color: #666; margin-top: .35rem;
+           text-transform: uppercase; letter-spacing: .05em; }}
+  .checklist {{ background: white; border: 1px solid #e5e5e5;
+                 border-radius: 12px; padding: 1.25rem 1.5rem;
+                 margin-bottom: 1.5rem; }}
+  .checklist-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                        margin-bottom: 1rem; }}
+  .checklist h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                    letter-spacing: .08em; color: #666; }}
+  .checklist ul {{ list-style: none; padding: 0; margin: 0; }}
+  .checklist li {{ padding: .45rem 0; border-bottom: 1px solid #f3f3f3; }}
+  .checklist li:last-child {{ border-bottom: none; }}
+  .checklist label {{ display: flex; align-items: center; gap: .65rem; cursor: pointer;
+                      font-size: .9rem; }}
+  .checklist input[type=checkbox] {{ width: 1.05rem; height: 1.05rem; cursor: pointer;
+                                     accent-color: #16a34a; flex-shrink: 0; }}
+  .checklist input[type=checkbox]:checked + .cl-label {{ text-decoration: line-through;
+                                                          color: #999; }}
+  .checklist li.cl-done {{ display: none; }}
+  .checklist.show-done li.cl-done {{ display: list-item; opacity: .55; }}
+  .checklist .cl-hint {{ font-size: .7rem; color: #aaa; margin: .75rem 0 0; }}
+  .checklist code {{ background: #f5f5f5; padding: 0 .25rem; border-radius: 3px; }}
+  .cl-actions {{ display: flex; gap: .35rem; }}
+  #cl-count {{ font-size: .7rem; color: #aaa; margin-left: .3rem; font-weight: normal;
+               letter-spacing: 0; text-transform: none; }}
+  #cl-reset, #cl-toggle-done {{
+    background: transparent; border: 1px solid #ddd; padding: .15rem .55rem;
+    font-size: .7rem; border-radius: 4px; cursor: pointer; color: #666;
+    text-transform: uppercase; letter-spacing: .05em;
+  }}
+  #cl-reset:hover, #cl-toggle-done:hover {{ background: #f5f5f5; }}
 </style>
 </head>
 <body>
@@ -306,6 +638,16 @@ def render_html(report: Report) -> str:
     <div class="stat"><div class="v">{busiest.day:%a %m/%d}</div><div class="l">Busiest day</div></div>
   </div>
 
+  {_render_goal_block(_load_goals())}
+
+  {_render_funnel_block(_load_funnel_snapshot())}
+
+  {_render_daily_checklist_block(_load_daily_checklist())}
+
+  {_render_checklist_block(_load_checklist())}
+
+  {_render_reflection_block(_load_reflections())}
+
   <canvas id="chart" height="120"></canvas>
 
   <table>
@@ -316,6 +658,115 @@ def render_html(report: Report) -> str:
   <footer>Generated {rendered_at} · <code>reclaim report --format html</code></footer>
 
 <script>
+// --- Checklist: persist check state, hide done items by default ---
+(function() {{
+  const KEY = "reclaim-checklist-state";
+  function load() {{
+    try {{ return JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{ return {{}}; }}
+  }}
+  function save(state) {{ localStorage.setItem(KEY, JSON.stringify(state)); }}
+  const state = load();
+  const checklistEl = document.querySelector('.checklist');
+  const counter = document.getElementById('cl-count');
+  const toggleBtn = document.getElementById('cl-toggle-done');
+
+  function updateCount() {{
+    const all = document.querySelectorAll('.checklist input[type=checkbox]');
+    const done = document.querySelectorAll('.checklist input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${{remaining}} of ${{all.length}})`;
+    if (toggleBtn) toggleBtn.textContent =
+      checklistEl.classList.contains('show-done') ? `hide completed (${{done.length}})`
+                                                  : `show completed (${{done.length}})`;
+  }}
+
+  function applyDoneClass(cb) {{
+    const li = cb.closest('li');
+    if (!li) return;
+    li.classList.toggle('cl-done', cb.checked);
+  }}
+
+  document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {{
+    const id = cb.getAttribute('data-cl');
+    if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
+    cb.addEventListener('change', () => {{
+      state[id] = cb.checked;
+      save(state);
+      applyDoneClass(cb);
+      updateCount();
+    }});
+  }});
+
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {{
+    checklistEl.classList.toggle('show-done');
+    updateCount();
+  }});
+
+  const resetBtn = document.getElementById('cl-reset');
+  if (resetBtn) resetBtn.addEventListener('click', () => {{
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.checklist input[type=checkbox]').forEach(cb => {{
+      cb.checked = false;
+      applyDoneClass(cb);
+    }});
+    updateCount();
+  }});
+
+  updateCount();
+}})();
+
+// --- Daily checklist: state keyed by today's date so it resets each morning ---
+(function() {{
+  const dcEl = document.querySelector('.daily-checklist');
+  if (!dcEl) return;
+  const today = dcEl.getAttribute('data-today');
+  const KEY = "reclaim-daily-" + today;
+  function load() {{
+    try {{ return JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{ return {{}}; }}
+  }}
+  function save(state) {{ localStorage.setItem(KEY, JSON.stringify(state)); }}
+
+  // Garbage-collect any other reclaim-daily-* keys (yesterday and earlier).
+  Object.keys(localStorage).forEach(k => {{
+    if (k.startsWith("reclaim-daily-") && k !== KEY) localStorage.removeItem(k);
+  }});
+
+  const state = load();
+  const counter = document.getElementById('dc-count');
+  const toggleBtn = document.getElementById('dc-toggle-done');
+
+  function updateCount() {{
+    const all = dcEl.querySelectorAll('input[type=checkbox]');
+    const done = dcEl.querySelectorAll('input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${{remaining}} of ${{all.length}})`;
+    if (toggleBtn) toggleBtn.textContent =
+      dcEl.classList.contains('show-done') ? `hide completed (${{done.length}})`
+                                           : `show completed (${{done.length}})`;
+  }}
+  function applyDoneClass(cb) {{
+    const li = cb.closest('li');
+    if (li) li.classList.toggle('cl-done', cb.checked);
+  }}
+  dcEl.querySelectorAll('input[type=checkbox]').forEach(cb => {{
+    const id = cb.getAttribute('data-dc');
+    if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
+    cb.addEventListener('change', () => {{
+      state[id] = cb.checked;
+      save(state);
+      applyDoneClass(cb);
+      updateCount();
+    }});
+  }});
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {{
+    dcEl.classList.toggle('show-done');
+    updateCount();
+  }});
+  updateCount();
+}})();
+
 const ctx = document.getElementById('chart').getContext('2d');
 new Chart(ctx, {{
   type: 'bar',

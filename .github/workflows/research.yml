@@ -1,0 +1,59 @@
+name: AI sales research
+
+on:
+  schedule:
+    # 14:30 UTC = 10:30 AM ET (DST). Runs 30 min before the Monday
+    # research block on aziza.muhammadx's calendar fires at 11am.
+    - cron: "30 14 * * MON"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "reclaim/research.py"
+      - "reclaim/google_docs.py"
+      - ".github/workflows/research.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Materialize OAuth credentials
+        env:
+          GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
+          CALENDAR_REFRESH_TOKEN_PERSONAL2: ${{ secrets.CALENDAR_REFRESH_TOKEN_PERSONAL2 }}
+        run: |
+          mkdir -p "$HOME/.config/reclaim/tokens"
+          strip() { printf '%s' "$1" | tr -d '[:space:]'; }
+          printf '%s' "$(strip "$GOOGLE_OAUTH_CLIENT")" \
+            > "$HOME/.config/reclaim/gmail_credentials.json"
+          printf '{"refresh_token":"%s"}' "$(strip "$CALENDAR_REFRESH_TOKEN_PERSONAL2")" \
+            > "$HOME/.config/reclaim/tokens/calendar-personal2.json"
+          chmod 600 "$HOME/.config/reclaim/tokens/"*.json
+          chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
+
+      - name: Generate weekly research doc
+        run: |
+          python -m reclaim.research generate > research-report.json
+          echo "--- result ---"
+          python -m json.tool research-report.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-report
+          path: research-report.json
+          retention-days: 14

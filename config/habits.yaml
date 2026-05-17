@@ -9,7 +9,7 @@ habits:
     title: Plan the day
     duration: 15m
     days: [mon, tue, wed, thu, fri]
-    ideal_window: { start: "09:00", end: "09:30" }
+    ideal_window: { start: "08:45", end: "09:00" }
     priority: P2
 
   - id: gym
@@ -38,3 +38,129 @@ habits:
     days: [mon]
     ideal_window: { start: "10:00", end: "11:00" }
     priority: P1
+
+  - id: job-hunt-review
+    title: "🎯 Weekly job-hunt review"
+    duration: 30m
+    days: [fri]
+    ideal_window: { start: "16:00", end: "16:30" }
+    priority: P1
+
+  # Personal blocks — live on aziza.muhammadx's calendar
+  - id: sleep
+    title: Sleep
+    duration: 8h
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    ideal_window: { start: "23:00", end: "07:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: gym-mwf
+    title: Gym
+    duration: 1h
+    days: [mon, wed, fri]
+    ideal_window: { start: "18:00", end: "19:00" }
+    calendar: personal2
+
+  # Daily spiritual + self-care (mirrored from existing calendar events)
+  - id: fajr-prayer
+    title: "🌙 Fajr Prayer"
+    duration: 30m
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    ideal_window: { start: "05:30", end: "06:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: skincare-routine
+    title: "✨ Skincare Routine"
+    duration: 30m
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    ideal_window: { start: "08:00", end: "08:30" }
+    priority: P2
+    calendar: personal2
+
+  # Variable-cadence fitness
+  - id: bike-ride
+    title: "🚴🏾‍♀️ Bike Ride"
+    duration: 1h
+    times_per_week: 3
+    days: [mon, wed, sun]
+    ideal_window: { start: "06:30", end: "07:30" }
+    priority: P2
+    calendar: personal2
+
+  - id: morning-run
+    title: "🏃🏾‍♀️ Run"
+    duration: 30m
+    times_per_week: 2
+    days: [mon, fri]
+    ideal_window: { start: "06:30", end: "07:00" }
+    priority: P2
+    calendar: personal2
+
+  - id: sculpted-fitness
+    title: "💪 Sculpted Fitness"
+    duration: 1h
+    times_per_week: 2
+    days: [tue, thu]
+    ideal_window: { start: "13:00", end: "15:00" }
+    priority: P2
+    calendar: personal2
+
+  # Mentor + coach recurring meetings (personal)
+  - id: quran-mentor-rashad
+    title: Quran Mentor Rashad
+    duration: 1h30m
+    days: [mon, wed]
+    ideal_window: { start: "15:30", end: "17:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: sales-coach-maddie
+    title: Sales Coach – Maddie DeCoste
+    duration: 1h
+    days: [tue]
+    ideal_window: { start: "10:00", end: "11:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: asata-saturday
+    title: Asata
+    duration: 1h
+    days: [sat]
+    ideal_window: { start: "10:00", end: "11:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: asian-meal-prep
+    title: Asian Meal Prep
+    duration: 1h
+    days: [sat]
+    ideal_window: { start: "12:00", end: "13:00" }
+    priority: P1
+    calendar: personal2
+
+  # Islamic studies — recurring courses
+  - id: foundations-of-islam
+    title: "📖 Foundations of Al-Islam"
+    duration: 1h
+    days: [mon, tue, wed, thu]
+    ideal_window: { start: "09:00", end: "10:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: tafseer-imam-wdm
+    title: "📖 Tafseer of Imam W. Deen Mohammed"
+    duration: 2h
+    days: [tue]
+    ideal_window: { start: "17:00", end: "19:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: ai-sales-research
+    title: "🤖 AI tools + high-ticket sales research"
+    duration: 30m
+    days: [mon]
+    ideal_window: { start: "11:00", end: "11:30" }
+    priority: P2
+    calendar: personal2

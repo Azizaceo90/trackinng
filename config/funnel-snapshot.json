@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-05-16T21:43:07.693064-04:00",
+  "window_days": 30,
+  "gmail_account": "default",
+  "calendar_account": "default",
+  "applications": 87,
+  "rejections": 46,
+  "interviews": 10,
+  "offers": 0,
+  "samples": {
+    "applications": [
+      {
+        "thread": "19e3274347b65864",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e31f6c53078f9d",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e31b18038b8ac6",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e2d21cbbcf9606",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e2c272141ff678",
+        "subject": "",
+        "from": ""
+      }
+    ],
+    "rejections": [
+      {
+        "thread": "19e31b18038b8ac6",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e318a490d74693",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e28306fa034bf3",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e22ebed2804fdb",
+        "subject": "",
+        "from": ""
+      },
+      {
+        "thread": "19e1e107410ce2f7",
+        "subject": "",
+        "from": ""
+      }
+    ]
+  }
+}

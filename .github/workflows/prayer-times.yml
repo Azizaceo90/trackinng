@@ -1,0 +1,60 @@
+name: Prayer times sync
+
+on:
+  schedule:
+    # 04:30 UTC = 00:30 ET (DST) / 23:30 ET previous day (standard time).
+    # Runs once daily, well after midnight so today's date is correct everywhere.
+    - cron: "30 4 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "reclaim/prayer_times.py"
+      - "reclaim/prayer_calc.py"
+      - ".github/workflows/prayer-times.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prayer-times
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Materialize OAuth credentials
+        env:
+          GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
+          CALENDAR_REFRESH_TOKEN_PERSONAL2: ${{ secrets.CALENDAR_REFRESH_TOKEN_PERSONAL2 }}
+        run: |
+          mkdir -p "$HOME/.config/reclaim/tokens"
+          strip() { printf '%s' "$1" | tr -d '[:space:]'; }
+          printf '%s' "$(strip "$GOOGLE_OAUTH_CLIENT")" \
+            > "$HOME/.config/reclaim/gmail_credentials.json"
+          printf '{"refresh_token":"%s"}' "$(strip "$CALENDAR_REFRESH_TOKEN_PERSONAL2")" \
+            > "$HOME/.config/reclaim/tokens/calendar-personal2.json"
+          chmod 600 "$HOME/.config/reclaim/tokens/"*.json
+          chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
+
+      - name: Sync next 14 days of prayer times
+        run: |
+          python -m reclaim.prayer_times sync --days 14 --account personal2 \
+            > prayer-sync-report.json
+          echo "--- Sync result ---"
+          python -m json.tool prayer-sync-report.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prayer-sync-report
+          path: prayer-sync-report.json
+          retention-days: 7

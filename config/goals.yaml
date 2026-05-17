@@ -1,0 +1,10 @@
+# Career goals — tracked on the dashboard.
+goals:
+  - id: jobs-q3-2026
+    title: "6 offers in 3 months"
+    metric: offers     # offers | interviews | final-rounds | applications
+    target: 6
+    start: "2026-05-17"
+    deadline: "2026-08-17"
+    current: 0         # update manually as offers come in (or auto-detect later)
+    notes: "Target six concrete job offers between mid-May and mid-August."

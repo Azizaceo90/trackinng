@@ -40,17 +40,31 @@ jobs:
           CALENDAR_REFRESH_TOKEN_PERSONAL2: ${{ secrets.CALENDAR_REFRESH_TOKEN_PERSONAL2 }}
         run: |
           mkdir -p "$HOME/.config/reclaim/tokens"
-          printf '%s' "$GOOGLE_OAUTH_CLIENT" > "$HOME/.config/reclaim/gmail_credentials.json"
-          printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN" \
+          # Strip any whitespace (newline, tab, space) from secret values —
+          # GitHub's UI sometimes appends a trailing newline on paste, which
+          # produces invalid JSON when embedded in the refresh_token field.
+          strip() { printf '%s' "$1" | tr -d '[:space:]'; }
+          OAUTH=$(strip "$GOOGLE_OAUTH_CLIENT")
+          GMAIL_DEFAULT=$(strip "$GMAIL_REFRESH_TOKEN")
+          GMAIL_P2=$(strip "$GMAIL_REFRESH_TOKEN_PERSONAL2")
+          CAL_DEFAULT=$(strip "$CALENDAR_REFRESH_TOKEN")
+          CAL_P2=$(strip "$CALENDAR_REFRESH_TOKEN_PERSONAL2")
+          printf '%s' "$OAUTH" > "$HOME/.config/reclaim/gmail_credentials.json"
+          printf '{"refresh_token":"%s"}' "$GMAIL_DEFAULT" \
             > "$HOME/.config/reclaim/tokens/default.json"
-          printf '{"refresh_token":"%s"}' "$GMAIL_REFRESH_TOKEN_PERSONAL2" \
+          printf '{"refresh_token":"%s"}' "$GMAIL_P2" \
             > "$HOME/.config/reclaim/tokens/personal2.json"
-          printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN" \
+          printf '{"refresh_token":"%s"}' "$CAL_DEFAULT" \
             > "$HOME/.config/reclaim/tokens/calendar-default.json"
-          printf '{"refresh_token":"%s"}' "$CALENDAR_REFRESH_TOKEN_PERSONAL2" \
+          printf '{"refresh_token":"%s"}' "$CAL_P2" \
             > "$HOME/.config/reclaim/tokens/calendar-personal2.json"
           chmod 600 "$HOME/.config/reclaim/tokens/"*.json
           chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
+          # Verify each token file parses as JSON before scan steps run.
+          for f in "$HOME/.config/reclaim/tokens/"*.json \
+                   "$HOME/.config/reclaim/gmail_credentials.json"; do
+            python -c "import json,sys; json.load(open(sys.argv[1])); print('OK', sys.argv[1])" "$f"
+          done
 
       - name: Scan default Gmail (muhammadaziza732) -> default calendar
         run: |

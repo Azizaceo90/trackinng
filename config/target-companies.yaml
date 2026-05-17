@@ -1,0 +1,470 @@
+# Curated target companies per capital-rich vertical.
+# Diversified across 10 verticals in 6 industries (finance, healthcare,
+# real estate, legal, hospitality, insurance, industrial, luxury).
+# Pre-researched starting points — verify currency before outreach.
+
+target_companies:
+
+  # --------------------------------------------------------------- FINANCE
+  - vertical: "Boutique M&A / lower-mid market"
+    industry: "Finance"
+    description: >
+      M&A advisory firms outside the bulge bracket. Source mandates through
+      senior banker relationships, conferences, and golf. AI-augmented
+      outbound is genuinely novel here.
+    companies:
+      - name: Houlihan Lokey
+        size: "~2,500 staff, public (HLI)"
+        why_fit: "Strong middle-market focus; mandate volume large enough to feel pipeline gaps."
+        decision_makers: "MDs by sector — search LinkedIn 'Houlihan Lokey Managing Director'."
+      - name: William Blair
+        size: "~2,000 staff, private partnership"
+        why_fit: "Growth-company M&A; partners feel origination pressure personally."
+      - name: Lincoln International
+        size: "~1,000 globally, private"
+        why_fit: "Mid-market specialist; each MD has personal mandate quota."
+      - name: Harris Williams
+        size: "~400 bankers, owned by PNC"
+        why_fit: "Pure middle-market; managing partner level cares about origination throughput."
+      - name: Capstone Partners
+        size: "~250 bankers, multi-office US"
+        why_fit: "Lower-middle market explicitly. Smaller team = each banker's origination matters more."
+      - name: Cascadia Capital
+        size: "~200 bankers, US-focused"
+        why_fit: "Pacific NW based; tech + consumer focus."
+      - name: D.A. Davidson Investment Banking
+        size: "~150 bankers"
+        why_fit: "Smaller boutique with sector-aligned MDs."
+    outreach_template: |
+      Subject: 30 seconds — adjacent firm filled a 2024 mandate gap
+
+      Hi {firstname},
+
+      Most {vertical} firms hit the same constraint: MD-led origination
+      is at capacity 90% of the year, leaving 10-15% of deal capacity unused.
+
+      A peer firm used AI-augmented outbound to identify decision-makers
+      at 200 sellers in their target sectors over 90 days. Closed 2
+      mandates worth $250K+ each.
+
+      Worth 15 min to share what specifically worked?
+
+      {yourname}
+
+  - vertical: "Private wealth / RIA"
+    industry: "Finance"
+    description: >
+      RIAs managing HNWI/UHNWI portfolios. Acquire via referrals from CPAs
+      and estate attorneys. Modern outbound to identify $5M+ liquidity
+      events = unfair advantage.
+    companies:
+      - name: Mercer Advisors
+        size: "~$60B AUM"
+        why_fit: "PE-backed, aggressive acquisitive RIA."
+      - name: Creative Planning
+        size: "~$200B AUM"
+        why_fit: "PE-backed; regional MDs land institutional clients."
+      - name: Mariner Wealth Advisors
+        size: "~$140B AUM"
+        why_fit: "Regional offices want HNW pipeline."
+      - name: Beacon Pointe Advisors
+        size: "~$36B AUM"
+        why_fit: "PE-backed roll-up; partners get AUM growth scorecards."
+      - name: Hightower
+        size: "~$160B AUM"
+        why_fit: "RIA aggregator; regional MDs have AUM quotas."
+      - name: Cresset Capital
+        size: "~$50B AUM"
+        why_fit: "MFO targeting families with $25M+ liquid."
+      - name: Wealth Enhancement Group
+        size: "~$90B AUM"
+        why_fit: "PE-backed (TA Associates); aggressive organic + M&A growth."
+    outreach_template: |
+      Subject: Identifying $5M+ liquidity events before they happen
+
+      Hi {firstname},
+
+      Most RIAs rely on attorneys + CPAs for HNW referrals. The problem
+      isn't quality, it's timing — you find out about the liquidity event
+      after 2-3 competitor advisors are already at the kitchen table.
+
+      A peer firm used AI-augmented signals (SEC Form 4, M&A filings, IPO
+      lockup expirations) to identify ~15 $5M+ events/month before
+      anyone's referral network. Closed 4 new households at $1M+ in 6 mo.
+
+      15-min call — no pitch.
+
+      {yourname}
+
+  # --------------------------------------------------------------- HEALTHCARE
+  - vertical: "Dental Support Organizations (DSOs) / specialty surgery centers"
+    industry: "Healthcare"
+    description: >
+      DSOs and ASCs are PE-backed roll-ups acquiring practices. Sourcing
+      $5M+ practices for acquisition is currently broker-relationship-led
+      and slow. AI-augmented identification of practices ready to sell
+      (age of owner-dentist, EBITDA inflection, geographic concentration)
+      is a real edge.
+    companies:
+      - name: Heartland Dental
+        size: "~1,800+ offices, KKR-backed"
+        why_fit: "Largest US DSO. M&A team has explicit acquisition quotas."
+      - name: Aspen Dental
+        size: "~1,000 offices"
+        why_fit: "Aggressive expansion; affiliate-acquisition machine."
+      - name: Pacific Dental Services
+        size: "~900 offices"
+        why_fit: "Private; growth via affiliated practices."
+      - name: Smile Brands
+        size: "~700 offices"
+        why_fit: "Bain Capital-backed; growth pressure."
+      - name: USPI (US Physical Therapy)
+        size: "~600 ASCs, owned by Tenet"
+        why_fit: "ASC roll-up; corporate development team."
+      - name: SCA Health (Surgery Care Affiliates)
+        size: "~320 ASCs, owned by Optum"
+        why_fit: "Largest ASC operator. Acquisition pipeline ALWAYS open."
+      - name: AmSurg / Envision
+        size: "~250 ASCs"
+        why_fit: "PE-owned (KKR); growth via affiliation."
+    outreach_template: |
+      Subject: Identifying $5M+ EBITDA practices 90 days before broker sees them
+
+      Hi {firstname},
+
+      DSO acquisition pipelines depend heavily on practice brokers, which
+      means by the time you see the deal, 3 competitors are bidding.
+
+      A peer DSO uses owner-age + practice-financial signals (state board
+      filings, NPI patterns, claims-volume changes via 837 data sources)
+      to identify practices likely to sell BEFORE the owner calls a broker.
+      Closed 3 acquisitions last year at 1.2-1.5x average market multiple
+      (because they were proprietary, not auctioned).
+
+      15-min call to compare notes on origination?
+
+      {yourname}
+
+  - vertical: "Concierge medicine / longevity clinics"
+    industry: "Healthcare"
+    description: >
+      Premium medical practices charging $5K-$25K/year per member. Source
+      patients via referrals + word-of-mouth. AI-augmented outreach to
+      HNWIs in target ZIP codes (esp. post-liquidity-event) is essentially
+      not done at scale anywhere.
+    companies:
+      - name: Forward
+        size: "~$200/mo subscription, multi-city"
+        why_fit: "Direct-to-consumer concierge; growth team explicit."
+      - name: MDVIP
+        size: "~1,000+ affiliated physicians"
+        why_fit: "Largest concierge medicine network; affiliate growth."
+      - name: One Medical (Amazon)
+        size: "~250+ offices"
+        why_fit: "Premium membership tier; corporate development team."
+      - name: Crossover Health
+        size: "Tech-focused concierge"
+        why_fit: "Mostly enterprise contracts but expanding consumer."
+      - name: Equinox Optimize (longevity arm)
+        size: "Premium fitness + longevity"
+        why_fit: "Targeting UHNW; need lead pipeline beyond gym members."
+      - name: Function Health
+        size: "Premium diagnostics subscription"
+        why_fit: "DTC; aggressive growth, sales pipeline."
+      - name: Fountain Life
+        size: "Longevity clinic, multi-site"
+        why_fit: "$25K+ membership; need HNW pipeline."
+    outreach_template: |
+      Subject: HNW patient acquisition without the country-club circuit
+
+      Hi {firstname},
+
+      Concierge / longevity practices typically grow via member referrals
+      plus events. Acquisition cost per $10K+ patient is brutal because
+      paid acquisition channels (Meta, Google) don't reach the right buyer.
+
+      We've built a signals layer that identifies UHNW prospects post-
+      liquidity event (business sale, IPO lockup) in target ZIP codes,
+      with timing aligned to when they're actually shopping for premium
+      healthcare. One clinic peer added 18 $15K-$25K members in 6 months
+      via this approach.
+
+      Worth 15 min? No pitch.
+
+      {yourname}
+
+  # --------------------------------------------------------------- LUXURY
+  - vertical: "Yacht / private aviation brokerage"
+    industry: "Luxury assets"
+    description: >
+      Luxury asset brokers sourcing via boat shows, marinas, captain networks.
+      Modern outbound on UHNW buyers is unprecedented.
+    companies:
+      - name: Northrop & Johnson
+        size: "Global yacht brokerage"
+        why_fit: "Charter + sales; one of largest US-based yacht houses."
+      - name: Fraser Yachts
+        size: "Global, ~270 brokers"
+        why_fit: "Largest superyacht brokerage; office heads have growth mandate."
+      - name: Camper & Nicholsons
+        size: "Global, historic luxury brand"
+        why_fit: "Strong UHNW relationships, mostly reactive sourcing."
+      - name: Burgess Yachts
+        size: "Global, 100+ brokers"
+        why_fit: "Superyacht specialist, $30M+ vessel sales."
+      - name: NetJets
+        size: "Largest fractional jet operator"
+        why_fit: "Owner acquisition explicit growth target."
+      - name: VistaJet
+        size: "Global jet membership"
+        why_fit: "Subscription LTV in millions per member."
+      - name: Flexjet
+        size: "US fractional"
+        why_fit: "Aggressive growth, head of sales has quota."
+    outreach_template: |
+      Subject: Identifying yacht buyers 6 months before boat shows
+
+      Hi {firstname},
+
+      Brokerages depend on showroom walk-ins and dealer referrals — both
+      lagging. Real buyers (recent exit, IPO, divorce) are shopping their
+      next major asset 3-9 months BEFORE walking into anyone's office.
+
+      We identify those events via SEC filings + M&A announcements,
+      surface qualified prospects monthly. One US brokerage surfaced
+      8 superyacht buyers in 9 months — closed 2 at $12M+.
+
+      15-min call?
+
+      {yourname}
+
+  # --------------------------------------------------------------- LEGAL
+  - vertical: "Boutique law firms (M&A, T&E, securities)"
+    industry: "Legal"
+    description: >
+      Law firms whose origination depends entirely on partner reputation +
+      bar/CLE networks. Lateral hires bring books, leave with them.
+    companies:
+      - name: Wachtell, Lipton, Rosen & Katz
+        size: "~280 lawyers, NYC"
+        why_fit: "Highest profit-per-partner in US; very selective on outbound."
+      - name: Cravath, Swaine & Moore
+        size: "~500 lawyers, NYC"
+        why_fit: "M&A elite; partner committee scrutinizes origination."
+      - name: Latham & Watkins
+        size: "~3,200 lawyers, global"
+        why_fit: "Massive M&A practice; office heads have growth metrics."
+      - name: Kirkland & Ellis
+        size: "~3,500 lawyers"
+        why_fit: "Largest profit pool globally; partner originations drive comp tiers."
+      - name: Skadden, Arps, Slate, Meagher & Flom
+        size: "~1,700 lawyers"
+        why_fit: "Historic M&A leader; lateral partner pressure."
+      - name: Paul, Weiss, Rifkind, Wharton & Garrison
+        size: "~1,000 lawyers"
+        why_fit: "Aggressive lateral hire strategy = always replacing books."
+      - name: Weil, Gotshal & Manges
+        size: "~1,000 lawyers"
+        why_fit: "PE-focused M&A; sponsor-deal originations."
+    outreach_template: |
+      Subject: Lateral partner book risk + scalable matter origination
+
+      Hi {firstname},
+
+      Most M&A practice groups face a structural risk: lateral partners
+      bring books, leave with them. The firm has no independent pipeline.
+
+      A peer firm built an origination system — AI-augmented identification
+      of corporate buyers/sellers BEFORE the public RFP — so the firm's
+      pipeline is independent of any single partner. 18 months, 7 mandates
+      worth $4.2M in fees, none referred through a partner.
+
+      Worth 15 min?
+
+      {yourname}
+
+  # --------------------------------------------------------------- REAL ESTATE
+  - vertical: "Specialty CRE — industrial / data center / medical"
+    industry: "Real estate"
+    description: >
+      CRE brokers in high-margin specialty segments. Identifying corporate
+      tenants BEFORE the RFP gets posted is the lever.
+    companies:
+      - name: JLL (Industrial & Logistics, Data Center)
+        size: "Global CRE giant"
+        why_fit: "Specialty teams feel margin pressure as logistics commoditizes."
+      - name: CBRE (Industrial, Data Center Solutions)
+        size: "Global CRE leader"
+        why_fit: "Data center brokerage is fastest-growing CBRE unit."
+      - name: Cushman & Wakefield
+        size: "Global CRE"
+        why_fit: "Specialty practice leaders feel commodification."
+      - name: Newmark
+        size: "Global, public (NMRK)"
+        why_fit: "Smaller than top 3, more agile, growth-focused."
+      - name: Colliers International
+        size: "Global"
+        why_fit: "Life sciences + industrial teams have aggressive targets."
+      - name: Avison Young
+        size: "Global partnership"
+        why_fit: "Local market leads feel pipeline pressure personally."
+      - name: Stream Realty Partners
+        size: "US, ~1,400 staff"
+        why_fit: "Industrial + office specialists; broker pipeline visible."
+    outreach_template: |
+      Subject: Industrial tenant identification before the RFP hits
+
+      Hi {firstname},
+
+      Margins in industrial / data center brokerage compress to 1-2% the
+      moment an RFP goes public.
+
+      Our system identifies corporate tenants 60-90 days BEFORE they post
+      an RFP — hiring patterns, real estate filings, supply chain
+      announcements. Lets your brokers walk in pre-RFP with the right asset.
+
+      Specialty peer landed 3 100K-sq-ft+ deals last year via this.
+      15 min?
+
+      {yourname}
+
+  - vertical: "Boutique hotels / luxury resorts"
+    industry: "Hospitality"
+    description: >
+      Boutique hotel groups and luxury resort operators competing for
+      group sales (weddings, corporate retreats, MICE) and direct-bookings.
+      OTA dependency caps margin; modern outbound to corporate buyers +
+      wedding planners is largely undone.
+    companies:
+      - name: Auberge Resorts Collection
+        size: "~30 luxury resorts globally"
+        why_fit: "Premium positioning; group sales teams have quotas."
+      - name: Aman Resorts
+        size: "~40 properties globally"
+        why_fit: "Ultra-luxury; group/buyout business is high-margin."
+      - name: Six Senses (IHG)
+        size: "~25+ resorts"
+        why_fit: "Wellness + group focused."
+      - name: Belmond (LVMH)
+        size: "~45 properties"
+        why_fit: "Luxury rail + cruise + resort; corporate retreat angle."
+      - name: Rosewood Hotels
+        size: "~30 properties"
+        why_fit: "Group + private events emphasis."
+      - name: The Setai (Miami) / similar boutique operators
+        size: "Single property + sister hotels"
+        why_fit: "Independent ops with direct sales pressure (no chain backing)."
+      - name: Mr & Mrs Smith / Small Luxury Hotels of the World
+        size: "Marketing aggregators"
+        why_fit: "Help member hotels find groups; piloting outbound for hotels."
+    outreach_template: |
+      Subject: Corporate buyout pipeline beyond MICE and Cvent
+
+      Hi {firstname},
+
+      Most luxury resort group sales rely on Cvent RFPs + corporate travel
+      buyer relationships. The problem: by the time the RFP lands, 8
+      hotels are bidding on price.
+
+      We help resorts identify corporate retreat decision-makers (Head of
+      People, Chief of Staff at $50M+ companies) 6 months before they
+      brief the procurement team. Lets your sales team walk in with a
+      curated proposal instead of competing on the RFP.
+
+      One peer resort booked 6 $250K+ buyouts in 9 months. 15 min?
+
+      {yourname}
+
+  # --------------------------------------------------------------- INSURANCE
+  - vertical: "Specialty insurance brokerages (HNW / marine / cyber)"
+    industry: "Insurance"
+    description: >
+      Specialty insurance brokers in HNW, marine, cyber, art, aviation
+      segments. Sale cycle is relationship-heavy. AI-augmented outreach
+      to UHNW asset owners or CISOs of mid-market companies is largely
+      undone outside of bulge-bracket insurers.
+    companies:
+      - name: Marsh Private Client Services
+        size: "Marsh's HNW arm"
+        why_fit: "UHNW client pipeline; growth pressure."
+      - name: AIG Private Client Group
+        size: "Specialist for UHNW"
+        why_fit: "Aggressive growth team."
+      - name: Chubb Personal Risk Services
+        size: "HNW/UHNW market leader"
+        why_fit: "Always recruiting new advisor channels."
+      - name: PURE Insurance
+        size: "Reciprocal exchange, ~$10B premiums"
+        why_fit: "HNW only; head of new business has explicit targets."
+      - name: NFP / NFP Private Risk
+        size: "~$3B premiums"
+        why_fit: "Growing UHNW arm; acquisition + organic growth."
+      - name: Brown & Brown — Specialty
+        size: "Specialty division of public broker"
+        why_fit: "Acquisition-machine; specialty heads need pipeline."
+      - name: BWD Group / regional HNW boutiques
+        size: "Smaller HNW specialist"
+        why_fit: "Independent operator; growth is survival."
+    outreach_template: |
+      Subject: HNW client pipeline without the country-club referrals
+
+      Hi {firstname},
+
+      Most HNW insurance pipelines depend on attorney + wealth-advisor
+      referrals — same network everyone else taps. Means you fight for
+      the same 100 introductions in your market.
+
+      We identify HNW asset acquisitions (yacht purchases, jet ownership,
+      $5M+ home closings) within 30 days of recording. Lets your team
+      reach the buyer BEFORE they call their existing broker.
+
+      One peer brokerage onboarded 14 new HNW households in 8 months.
+      15 min?
+
+      {yourname}
+
+  # --------------------------------------------------------------- INDUSTRIAL
+  - vertical: "Aerospace & defense subcontractors"
+    industry: "Industrial"
+    description: >
+      Defense & aerospace subcontractors competing for primes' (Lockheed,
+      Boeing, RTX) BD programs. Sourcing program intelligence pre-RFP
+      is the moat. Most still use trade shows + relationships.
+    companies:
+      - name: TransDigm Group
+        size: "~$7B revenue, public (TDG)"
+        why_fit: "Acquisition-heavy aerospace components; M&A team always sourcing."
+      - name: HEICO
+        size: "~$2.8B revenue, public (HEI)"
+        why_fit: "Aerospace aftermarket; growing via acquisition."
+      - name: Curtiss-Wright
+        size: "~$2.8B revenue, public (CW)"
+        why_fit: "Defense subsystems; program-win-rate matters."
+      - name: Moog Inc.
+        size: "~$3B revenue, public (MOG.A)"
+        why_fit: "Motion control for defense; specialty team pipeline."
+      - name: Ducommun
+        size: "~$750M revenue, public (DCO)"
+        why_fit: "Smaller, growth-hungry tier-2 subcontractor."
+      - name: Kratos Defense
+        size: "~$1B revenue, public (KTOS)"
+        why_fit: "Unmanned systems; aggressive growth."
+      - name: Mercury Systems
+        size: "~$900M revenue, public (MRCY)"
+        why_fit: "Defense electronics; BD team has visibility on pipeline."
+    outreach_template: |
+      Subject: Program intelligence 9 months before the prime publishes the RFP
+
+      Hi {firstname},
+
+      A&D subcontractor BD is mostly trade shows + relationships at the
+      primes. By the time the RFP drops, the win is usually decided.
+
+      We surface program shifts — DoD budget reallocations, FAR
+      modifications, prime-contractor headcount moves into specific
+      programs — that signal where money is moving 6-12 months pre-RFP.
+
+      One tier-2 sub used this to win 2 sole-source programs worth $40M
+      combined. Worth 15 min?
+
+      {yourname}
