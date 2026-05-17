@@ -209,6 +209,53 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_daily_checklist() -> dict | None:
+    """Read config/daily-checklist.yaml. Returns the parsed dict or None."""
+    from pathlib import Path
+    try:
+        import yaml
+    except ImportError:
+        return None
+    p = Path("config/daily-checklist.yaml")
+    if not p.exists():
+        return None
+    try:
+        return (yaml.safe_load(p.read_text()) or {}).get("daily_checklist")
+    except Exception:
+        return None
+
+
+def _render_daily_checklist_block(cfg: dict | None) -> str:
+    import html as _html
+    from datetime import date as _date
+    if not cfg:
+        return ""
+    today = _date.today()
+    weekday = today.strftime("%a").lower()[:3]   # mon, tue, ...
+    show_on = [d.lower() for d in (cfg.get("show_on_days") or [])]
+    if show_on and weekday not in show_on:
+        return ""
+    items = cfg.get("items", []) or []
+    if not items:
+        return ""
+    lis = "".join(
+        f'<li><label><input type="checkbox" data-dc="{_html.escape(str(it.get("id","")))}">'
+        f'<span class="cl-label">{_html.escape(str(it.get("label","")))}</span></label></li>'
+        for it in items
+    )
+    return f"""
+  <section class="checklist daily-checklist" data-today="{today.isoformat()}">
+    <div class="checklist-header">
+      <h2>Daily routine <span id="dc-count"></span></h2>
+      <div class="cl-actions">
+        <button id="dc-toggle-done" type="button">show completed</button>
+      </div>
+    </div>
+    <ul id="dc-list">{lis}</ul>
+    <p class="cl-hint">Resets every morning. Edit items in <code>config/daily-checklist.yaml</code>.</p>
+  </section>"""
+
+
 def _load_checklist() -> list[dict]:
     """Read config/checklist.yaml. Returns [] if missing."""
     from pathlib import Path
@@ -595,6 +642,8 @@ def render_html(report: Report) -> str:
 
   {_render_funnel_block(_load_funnel_snapshot())}
 
+  {_render_daily_checklist_block(_load_daily_checklist())}
+
   {_render_checklist_block(_load_checklist())}
 
   {_render_reflection_block(_load_reflections())}
@@ -664,6 +713,57 @@ def render_html(report: Report) -> str:
     updateCount();
   }});
 
+  updateCount();
+}})();
+
+// --- Daily checklist: state keyed by today's date so it resets each morning ---
+(function() {{
+  const dcEl = document.querySelector('.daily-checklist');
+  if (!dcEl) return;
+  const today = dcEl.getAttribute('data-today');
+  const KEY = "reclaim-daily-" + today;
+  function load() {{
+    try {{ return JSON.parse(localStorage.getItem(KEY) || "{{}}"); }} catch (e) {{ return {{}}; }}
+  }}
+  function save(state) {{ localStorage.setItem(KEY, JSON.stringify(state)); }}
+
+  // Garbage-collect any other reclaim-daily-* keys (yesterday and earlier).
+  Object.keys(localStorage).forEach(k => {{
+    if (k.startsWith("reclaim-daily-") && k !== KEY) localStorage.removeItem(k);
+  }});
+
+  const state = load();
+  const counter = document.getElementById('dc-count');
+  const toggleBtn = document.getElementById('dc-toggle-done');
+
+  function updateCount() {{
+    const all = dcEl.querySelectorAll('input[type=checkbox]');
+    const done = dcEl.querySelectorAll('input[type=checkbox]:checked');
+    const remaining = all.length - done.length;
+    if (counter) counter.textContent = `(${{remaining}} of ${{all.length}})`;
+    if (toggleBtn) toggleBtn.textContent =
+      dcEl.classList.contains('show-done') ? `hide completed (${{done.length}})`
+                                           : `show completed (${{done.length}})`;
+  }}
+  function applyDoneClass(cb) {{
+    const li = cb.closest('li');
+    if (li) li.classList.toggle('cl-done', cb.checked);
+  }}
+  dcEl.querySelectorAll('input[type=checkbox]').forEach(cb => {{
+    const id = cb.getAttribute('data-dc');
+    if (state[id]) cb.checked = true;
+    applyDoneClass(cb);
+    cb.addEventListener('change', () => {{
+      state[id] = cb.checked;
+      save(state);
+      applyDoneClass(cb);
+      updateCount();
+    }});
+  }});
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {{
+    dcEl.classList.toggle('show-done');
+    updateCount();
+  }});
   updateCount();
 }})();
 

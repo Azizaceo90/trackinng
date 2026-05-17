@@ -1,0 +1,34 @@
+# Daily checklist — shown Mon-Fri on the dashboard.
+# Checks reset every morning (storage is keyed by today's date).
+# Add/remove items here.
+daily_checklist:
+  show_on_days: [mon, tue, wed, thu, fri]
+  items:
+    # Prayers — on time
+    - id: fajr
+      label: "🌙 Fajr prayer on time"
+    - id: dhuhr
+      label: "☀️ Dhuhr prayer on time"
+    - id: asr
+      label: "🌤️ Asr prayer on time"
+    - id: maghrib
+      label: "🌅 Maghrib prayer on time"
+    - id: isha
+      label: "🌌 Isha prayer on time"
+    # Duas
+    - id: morning-duas
+      label: "📿 Morning duas (after Fajr)"
+    - id: evening-duas
+      label: "📿 Evening duas (after Maghrib)"
+    # Body
+    - id: workout
+      label: "💪 Workout / movement (Bike / Run / Sculpted / Gym)"
+    - id: water
+      label: "💧 64oz water"
+    - id: sleep
+      label: "🛌 Lights out by 11pm"
+    # Mind
+    - id: quran-read
+      label: "📖 10 min Qur'an reading"
+    - id: gratitude
+      label: "✨ One gratitude before bed"
