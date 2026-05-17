@@ -38,3 +38,19 @@ habits:
     days: [mon]
     ideal_window: { start: "10:00", end: "11:00" }
     priority: P1
+
+  # Personal blocks — live on aziza.muhammadx's calendar
+  - id: sleep
+    title: Sleep
+    duration: 8h
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    ideal_window: { start: "23:00", end: "07:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: gym-mwf
+    title: Gym
+    duration: 1h
+    days: [mon, wed, fri]
+    ideal_window: { start: "18:00", end: "19:00" }
+    calendar: personal2
