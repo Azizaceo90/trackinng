@@ -31,7 +31,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from reclaim import google_docs
+from reclaim import calendar_fetch, google_docs
 
 
 DEFAULT_TZ = ZoneInfo("America/Detroit")
@@ -372,6 +372,70 @@ def _ensure_framework_doc(folder_id: str, access_token: str) -> str:
     return doc["url"]
 
 
+def _attach_doc_to_research_event(doc_id: str, doc_url: str, doc_title: str,
+                                   monday: date, access_token: str) -> str | None:
+    """Find this Monday's '🤖 AI tools + high-ticket sales research' event
+    instance on aziza.muhammadx's calendar and attach the new doc to it
+    (plus drop the URL into the description so it's visible inline).
+
+    Returns the event's htmlLink if successful, None if event not found.
+    """
+    # List Monday's events (single occurrences, so the recurring instance
+    # comes back as its own event).
+    start = datetime(monday.year, monday.month, monday.day, 0, 0, tzinfo=DEFAULT_TZ)
+    end = start + timedelta(days=1)
+    events = calendar_fetch.list_events(
+        access_token,
+        time_min=start.isoformat(),
+        time_max=end.isoformat(),
+        max_results=50,
+    )
+    target = None
+    for e in events:
+        summary = (e.get("summary") or "").lower()
+        if "research" in summary and ("ai tools" in summary or "🤖" in (e.get("summary") or "")):
+            target = e
+            break
+    if not target:
+        return None
+
+    # Merge with existing attachments (don't blow away anything already there).
+    existing_attachments = target.get("attachments", []) or []
+    # Drop any previous-week doc attachment if it matches our title pattern
+    existing_attachments = [
+        a for a in existing_attachments
+        if not (a.get("title", "").startswith("Week of ")
+                and a.get("mimeType") == "application/vnd.google-apps.document")
+    ]
+    existing_attachments.append({
+        "fileUrl": doc_url,
+        "fileId": doc_id,
+        "title": doc_title,
+        "mimeType": "application/vnd.google-apps.document",
+    })
+
+    # Also prepend the link into the description so it's visible inline
+    existing_desc = (target.get("description") or "").strip()
+    new_desc = (
+        f"📕 This week's research doc:\n{doc_url}\n\n"
+        + (existing_desc if existing_desc else "")
+    )
+
+    body = {
+        "attachments": existing_attachments,
+        "description": new_desc,
+    }
+    # supportsAttachments=true is required to add Drive-file attachments
+    calendar_fetch._api(
+        "PATCH",
+        f"/calendars/primary/events/{target['id']}",
+        access_token,
+        body=body,
+        params={"supportsAttachments": "true"},
+    )
+    return target.get("htmlLink")
+
+
 def generate() -> dict:
     token = google_docs.get_access_token("personal2")
 
@@ -388,6 +452,15 @@ def generate() -> dict:
     google_docs.write_doc(doc["doc_id"], sections, token)
     google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
 
+    # Attach to Monday's recurring research event
+    event_link = None
+    try:
+        event_link = _attach_doc_to_research_event(
+            doc["doc_id"], doc["url"], title, monday, token,
+        )
+    except Exception as ex:
+        print(f"WARN: attachment to calendar event failed: {ex}", file=sys.stderr)
+
     result = {
         "generated_at": datetime.now(DEFAULT_TZ).isoformat(),
         "week_of": monday.isoformat(),
@@ -395,6 +468,7 @@ def generate() -> dict:
         "framework_doc_url": framework_url,
         "week_doc_title": title,
         "week_doc_url": doc["url"],
+        "calendar_event_link": event_link,
         "candidate_count": len(candidates),
         "candidates_summary": [
             {"title": (c.get("title") or "")[:80], "score": c["_score"],
