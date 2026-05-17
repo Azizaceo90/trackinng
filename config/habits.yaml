@@ -140,3 +140,20 @@ habits:
     ideal_window: { start: "12:00", end: "13:00" }
     priority: P1
     calendar: personal2
+
+  # Islamic studies — recurring courses
+  - id: foundations-of-islam
+    title: "📖 Foundations of Al-Islam"
+    duration: 1h
+    days: [mon, tue, wed, thu]
+    ideal_window: { start: "09:00", end: "10:00" }
+    priority: P1
+    calendar: personal2
+
+  - id: tafseer-imam-wdm
+    title: "📖 Tafseer of Imam W. Deen Mohammed"
+    duration: 2h
+    days: [tue]
+    ideal_window: { start: "17:00", end: "19:00" }
+    priority: P1
+    calendar: personal2
