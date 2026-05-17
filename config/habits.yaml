@@ -9,7 +9,7 @@ habits:
     title: Plan the day
     duration: 15m
     days: [mon, tue, wed, thu, fri]
-    ideal_window: { start: "09:00", end: "09:30" }
+    ideal_window: { start: "08:45", end: "09:00" }
     priority: P2
 
   - id: gym
