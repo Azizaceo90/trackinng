@@ -209,6 +209,45 @@ def _fmt_td(td: timedelta) -> str:
     return f"{m}m"
 
 
+def _load_funnel_snapshot() -> dict | None:
+    """Read config/funnel-snapshot.json. Returns None if missing."""
+    from pathlib import Path
+    p = Path("config/funnel-snapshot.json")
+    if not p.exists():
+        return None
+    import json
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def _render_funnel_block(snap: dict | None) -> str:
+    """Render the job-hunt funnel as 4 stat boxes."""
+    if not snap:
+        return ""
+    window = snap.get("window_days", 30)
+    rows = [
+        ("Applications", snap.get("applications", 0), "#3b82f6"),
+        ("Interviews",   snap.get("interviews", 0),   "#22c55e"),
+        ("Offers",       snap.get("offers", 0),       "#f59e0b"),
+        ("Rejections",   snap.get("rejections", 0),   "#ef4444"),
+    ]
+    cells = "".join(
+        f'<div class="fn-box"><div class="fn-v" style="color:{c}">{v}</div>'
+        f'<div class="fn-l">{label}</div></div>'
+        for label, v, c in rows
+    )
+    return f"""
+  <section class="funnel">
+    <div class="funnel-header">
+      <h2>Job-hunt funnel</h2>
+      <span class="funnel-window">last {window} days · 1 inbox</span>
+    </div>
+    <div class="funnel-grid">{cells}</div>
+  </section>"""
+
+
 def _load_reflections() -> list[dict]:
     """Read config/reflections.yaml. Returns [] if missing."""
     from pathlib import Path
@@ -452,6 +491,22 @@ def render_html(report: Report) -> str:
   .reflection-col.worked h3 {{ color: #16a34a; }}
   .reflection-col.didnt  h3 {{ color: #dc2626; }}
   .reflection-col.nxt    h3 {{ color: #2563eb; }}
+  .funnel {{ background: white; border: 1px solid #e5e5e5;
+             border-radius: 12px; padding: 1.25rem 1.5rem;
+             margin-bottom: 1.5rem; }}
+  .funnel-header {{ display: flex; align-items: baseline; justify-content: space-between;
+                    margin-bottom: 1rem; }}
+  .funnel h2 {{ font-size: .8rem; margin: 0; text-transform: uppercase;
+                letter-spacing: .08em; color: #666; }}
+  .funnel-window {{ font-size: .75rem; color: #888; }}
+  .funnel-grid {{ display: grid; grid-template-columns: repeat(4, 1fr);
+                  gap: .75rem; }}
+  @media (max-width: 720px) {{ .funnel-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+  .fn-box {{ text-align: center; padding: .85rem .5rem;
+             background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; }}
+  .fn-v {{ font-size: 2.25rem; font-weight: 700; line-height: 1; }}
+  .fn-l {{ font-size: .7rem; color: #666; margin-top: .35rem;
+           text-transform: uppercase; letter-spacing: .05em; }}
 </style>
 </head>
 <body>
@@ -468,6 +523,8 @@ def render_html(report: Report) -> str:
   </div>
 
   {_render_goal_block(_load_goals())}
+
+  {_render_funnel_block(_load_funnel_snapshot())}
 
   {_render_reflection_block(_load_reflections())}
 

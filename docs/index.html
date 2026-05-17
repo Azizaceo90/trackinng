@@ -68,6 +68,22 @@
   .reflection-col.worked h3 { color: #16a34a; }
   .reflection-col.didnt  h3 { color: #dc2626; }
   .reflection-col.nxt    h3 { color: #2563eb; }
+  .funnel { background: white; border: 1px solid #e5e5e5;
+             border-radius: 12px; padding: 1.25rem 1.5rem;
+             margin-bottom: 1.5rem; }
+  .funnel-header { display: flex; align-items: baseline; justify-content: space-between;
+                    margin-bottom: 1rem; }
+  .funnel h2 { font-size: .8rem; margin: 0; text-transform: uppercase;
+                letter-spacing: .08em; color: #666; }
+  .funnel-window { font-size: .75rem; color: #888; }
+  .funnel-grid { display: grid; grid-template-columns: repeat(4, 1fr);
+                  gap: .75rem; }
+  @media (max-width: 720px) { .funnel-grid { grid-template-columns: repeat(2, 1fr); } }
+  .fn-box { text-align: center; padding: .85rem .5rem;
+             background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; }
+  .fn-v { font-size: 2.25rem; font-weight: 700; line-height: 1; }
+  .fn-l { font-size: .7rem; color: #666; margin-top: .35rem;
+           text-transform: uppercase; letter-spacing: .05em; }
 </style>
 </head>
 <body>
@@ -104,6 +120,15 @@
   </section>
 
   
+  <section class="funnel">
+    <div class="funnel-header">
+      <h2>Job-hunt funnel</h2>
+      <span class="funnel-window">last 30 days · 1 inbox</span>
+    </div>
+    <div class="funnel-grid"><div class="fn-box"><div class="fn-v" style="color:#3b82f6">87</div><div class="fn-l">Applications</div></div><div class="fn-box"><div class="fn-v" style="color:#22c55e">10</div><div class="fn-l">Interviews</div></div><div class="fn-box"><div class="fn-v" style="color:#f59e0b">0</div><div class="fn-l">Offers</div></div><div class="fn-box"><div class="fn-v" style="color:#ef4444">46</div><div class="fn-l">Rejections</div></div></div>
+  </section>
+
+  
   <section class="reflection">
     <div class="reflection-header">
       <h2>Weekly reflection</h2>
@@ -132,7 +157,7 @@
     <tbody><tr><td>Mon 05/11</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Tue 05/12</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Wed 05/13</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Thu 05/14</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Fri 05/15</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sat 05/16</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr><td>Sun 05/17</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>—</strong></td></tr><tr class="total"><td><strong>Total</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td><td><strong>—</strong></td></tr></tbody>
   </table>
 
-  <footer>Generated 2026-05-17 01:32 · <code>reclaim report --format html</code></footer>
+  <footer>Generated 2026-05-17 01:43 · <code>reclaim report --format html</code></footer>
 
 <script>
 const ctx = document.getElementById('chart').getContext('2d');
