@@ -39,6 +39,13 @@ habits:
     ideal_window: { start: "10:00", end: "11:00" }
     priority: P1
 
+  - id: job-hunt-review
+    title: "🎯 Weekly job-hunt review"
+    duration: 30m
+    days: [fri]
+    ideal_window: { start: "16:00", end: "16:30" }
+    priority: P1
+
   # Personal blocks — live on aziza.muhammadx's calendar
   - id: sleep
     title: Sleep
