@@ -350,7 +350,16 @@ def render_weekly_sections(week_of: date) -> tuple[list[dict], list[dict]]:
     # --- Each vertical gets its own block ---
     for v in verticals:
         name = v.get("vertical", "?")
-        s.append({"kind": "heading", "text": name})
+        industry = v.get("industry", "")
+        s.append({"kind": "heading", "text": f"{name}" + (f"  ({industry})" if industry else "")})
+
+        # Economics summary line — net margin + deal size
+        margin = v.get("typical_net_margin", "")
+        deal_size = v.get("typical_deal_size", "")
+        if margin or deal_size:
+            s.append({"kind": "paragraph", "text":
+                f"💰 Net margin: {margin or '—'}  ·  Typical deal: {deal_size or '—'}"})
+
         s.append({"kind": "paragraph", "text": (v.get("description", "") or "").strip()})
 
         companies = v.get("companies", []) or []
@@ -392,20 +401,28 @@ def render_weekly_sections(week_of: date) -> tuple[list[dict], list[dict]]:
 
 
 def _ensure_framework_doc(folder_id: str, access_token: str) -> str:
-    """Create the framework reference doc once if it doesn't exist. Returns URL."""
-    # See if a framework doc is already in the folder
-    q = (f"'{folder_id}' in parents and name='{FRAMEWORK_DOC_TITLE}' "
-         f"and mimeType='application/vnd.google-apps.document' and trashed=false")
-    out = google_docs._api(
-        "GET", google_docs.DRIVE_API, "/files", access_token,
-        params={"q": q, "fields": "files(id,name)"},
+    """Create the framework reference doc once if missing, share with main account."""
+    existing_id = google_docs.find_doc_in_folder(
+        folder_id, FRAMEWORK_DOC_TITLE, access_token,
     )
-    existing = out.get("files", [])
-    if existing:
-        return f"https://docs.google.com/document/d/{existing[0]['id']}/edit"
+    if existing_id:
+        # Make sure it's shared with the main account each run (cheap, idempotent)
+        try:
+            google_docs.share_with_user(
+                existing_id, "muhammadaziza732@gmail.com", "writer", access_token,
+            )
+        except Exception:
+            pass
+        return f"https://docs.google.com/document/d/{existing_id}/edit"
     doc = google_docs.create_doc(FRAMEWORK_DOC_TITLE, access_token)
     google_docs.write_doc(doc["doc_id"], render_framework_doc_sections(), access_token)
     google_docs.move_to_folder(doc["doc_id"], folder_id, access_token)
+    try:
+        google_docs.share_with_user(
+            doc["doc_id"], "muhammadaziza732@gmail.com", "writer", access_token,
+        )
+    except Exception:
+        pass
     return doc["url"]
 
 
@@ -491,16 +508,41 @@ def generate() -> dict:
     sections, verticals = render_weekly_sections(monday)
     title = f"Week of {monday:%b %d, %Y} — AI + High-Ticket Sales"
 
-    doc = google_docs.create_doc(title, token)
-    google_docs.write_doc(doc["doc_id"], sections, token)
-    try:
-        google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
+    # Reuse existing doc for this week if one is already in the folder
+    existing_id = google_docs.find_doc_in_folder(folder["folder_id"], title, token)
+    if existing_id:
+        google_docs.clear_doc(existing_id, token)
+        google_docs.write_doc(existing_id, sections, token)
+        doc = {
+            "doc_id": existing_id,
+            "title": title,
+            "url": f"https://docs.google.com/document/d/{existing_id}/edit",
+        }
         moved_ok = True
         move_error = None
+        reused = True
+    else:
+        doc = google_docs.create_doc(title, token)
+        google_docs.write_doc(doc["doc_id"], sections, token)
+        try:
+            google_docs.move_to_folder(doc["doc_id"], folder["folder_id"], token)
+            moved_ok = True
+            move_error = None
+        except Exception as ex:
+            moved_ok = False
+            move_error = str(ex)
+            print(f"WARN: move_to_folder failed: {ex}", file=sys.stderr)
+        reused = False
+
+    # Share the doc with muhammadaziza732 so it shows up in her main Drive too
+    try:
+        google_docs.share_with_user(
+            doc["doc_id"], "muhammadaziza732@gmail.com", "writer", token,
+        )
+        shared = True
     except Exception as ex:
-        moved_ok = False
-        move_error = str(ex)
-        print(f"WARN: move_to_folder failed: {ex}", file=sys.stderr)
+        shared = False
+        print(f"WARN: share_with_user failed: {ex}", file=sys.stderr)
 
     # Attach to Monday's recurring research event
     event_link = None
@@ -518,6 +560,8 @@ def generate() -> dict:
         "framework_doc_url": framework_url,
         "week_doc_title": title,
         "week_doc_url": doc["url"],
+        "reused_existing_doc": reused,
+        "shared_with_main_account": shared,
         "calendar_event_link": event_link,
         "moved_to_folder": moved_ok,
         "move_error": move_error,

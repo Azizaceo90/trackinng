@@ -173,3 +173,40 @@ def move_to_folder(file_id: str, folder_id: str, access_token: str) -> None:
         "PATCH", DRIVE_API, f"/files/{file_id}", access_token,
         params={"addParents": folder_id, "removeParents": current or "root"},
     )
+
+
+def find_doc_in_folder(folder_id: str, title: str, access_token: str) -> str | None:
+    """Return the doc_id of an existing doc with this title inside the folder,
+    or None. With drive.file scope we only see files this app created."""
+    safe_title = title.replace("'", "\\'")
+    q = (f"'{folder_id}' in parents and name='{safe_title}' "
+         f"and mimeType='application/vnd.google-apps.document' and trashed=false")
+    out = _api(
+        "GET", DRIVE_API, "/files", access_token,
+        params={"q": q, "fields": "files(id,name)"},
+    )
+    files = out.get("files", [])
+    return files[0]["id"] if files else None
+
+
+def clear_doc(doc_id: str, access_token: str) -> None:
+    """Delete all content in a doc, leaving an empty body."""
+    doc = _api("GET", DOCS_API, f"/documents/{doc_id}", access_token)
+    end_index = doc["body"]["content"][-1]["endIndex"] - 1
+    if end_index <= 1:
+        return  # already empty
+    batch_update(doc_id, [{
+        "deleteContentRange": {
+            "range": {"startIndex": 1, "endIndex": end_index}
+        }
+    }], access_token)
+
+
+def share_with_user(file_id: str, email: str, role: str, access_token: str) -> None:
+    """Grant a specific user access to a Drive file. role = 'reader' | 'writer' | 'commenter'."""
+    _api(
+        "POST", DRIVE_API, f"/files/{file_id}/permissions",
+        access_token,
+        params={"sendNotificationEmail": "false"},
+        body={"role": role, "type": "user", "emailAddress": email},
+    )

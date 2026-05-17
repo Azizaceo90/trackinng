@@ -8,6 +8,8 @@ target_companies:
   # --------------------------------------------------------------- FINANCE
   - vertical: "Boutique M&A / lower-mid market"
     industry: "Finance"
+    typical_net_margin: "30-50% (partnership profit-per-partner basis)"
+    typical_deal_size: "$5M-$50M transactions; $250K-$2M advisory fees per mandate"
     description: >
       M&A advisory firms outside the bulge bracket. Source mandates through
       senior banker relationships, conferences, and golf. AI-augmented
@@ -53,6 +55,8 @@ target_companies:
 
   - vertical: "Private wealth / RIA"
     industry: "Finance"
+    typical_net_margin: "25-40% (operating margin, scales with AUM)"
+    typical_deal_size: "$25K-$150K annual recurring fee per HNW household; $5M+ AUM minimum"
     description: >
       RIAs managing HNWI/UHNWI portfolios. Acquire via referrals from CPAs
       and estate attorneys. Modern outbound to identify $5M+ liquidity
@@ -99,6 +103,8 @@ target_companies:
   # --------------------------------------------------------------- HEALTHCARE
   - vertical: "Dental Support Organizations (DSOs) / specialty surgery centers"
     industry: "Healthcare"
+    typical_net_margin: "15-25% (EBITDA margin; PE-backed roll-ups push toward 25%+)"
+    typical_deal_size: "$2M-$15M EBITDA practice acquisitions; 5-9x EBITDA multiples"
     description: >
       DSOs and ASCs are PE-backed roll-ups acquiring practices. Sourcing
       $5M+ practices for acquisition is currently broker-relationship-led
@@ -147,6 +153,8 @@ target_companies:
 
   - vertical: "Concierge medicine / longevity clinics"
     industry: "Healthcare"
+    typical_net_margin: "20-35% (premium model; LTV-heavy subscription)"
+    typical_deal_size: "$5K-$25K/year/member; $50K-$250K LTV per UHNW patient"
     description: >
       Premium medical practices charging $5K-$25K/year per member. Source
       patients via referrals + word-of-mouth. AI-augmented outreach to
@@ -196,6 +204,8 @@ target_companies:
   # --------------------------------------------------------------- LUXURY
   - vertical: "Yacht / private aviation brokerage"
     industry: "Luxury assets"
+    typical_net_margin: "5-15% (commission-based brokerage; superyachts higher)"
+    typical_deal_size: "$300K-$3M commission per yacht sale; $50K-$500K per fractional jet sale"
     description: >
       Luxury asset brokers sourcing via boat shows, marinas, captain networks.
       Modern outbound on UHNW buyers is unprecedented.
@@ -241,6 +251,8 @@ target_companies:
   # --------------------------------------------------------------- LEGAL
   - vertical: "Boutique law firms (M&A, T&E, securities)"
     industry: "Legal"
+    typical_net_margin: "35-55% (profit-per-partner basis; Wachtell & K&E top 60%+)"
+    typical_deal_size: "$200K-$2M per matter; partners originate $5M-$50M+ annual books"
     description: >
       Law firms whose origination depends entirely on partner reputation +
       bar/CLE networks. Lateral hires bring books, leave with them.
@@ -286,6 +298,8 @@ target_companies:
   # --------------------------------------------------------------- REAL ESTATE
   - vertical: "Specialty CRE — industrial / data center / medical"
     industry: "Real estate"
+    typical_net_margin: "8-15% (brokerage operating margin; data center commissions much higher)"
+    typical_deal_size: "$50K-$500K commission per industrial deal; $500K-$3M+ per data center"
     description: >
       CRE brokers in high-margin specialty segments. Identifying corporate
       tenants BEFORE the RFP gets posted is the lever.
@@ -330,6 +344,8 @@ target_companies:
 
   - vertical: "Boutique hotels / luxury resorts"
     industry: "Hospitality"
+    typical_net_margin: "8-20% (operating margin; group/buyout business much higher than transient)"
+    typical_deal_size: "$100K-$500K per corporate buyout; $25K-$150K per wedding/event"
     description: >
       Boutique hotel groups and luxury resort operators competing for
       group sales (weddings, corporate retreats, MICE) and direct-bookings.
@@ -378,6 +394,8 @@ target_companies:
   # --------------------------------------------------------------- INSURANCE
   - vertical: "Specialty insurance brokerages (HNW / marine / cyber)"
     industry: "Insurance"
+    typical_net_margin: "10-25% (commission + bonuses; specialty lines higher than standard)"
+    typical_deal_size: "$5K-$50K annual commission per HNW household; $100K+ on marine/cyber accounts"
     description: >
       Specialty insurance brokers in HNW, marine, cyber, art, aviation
       segments. Sale cycle is relationship-heavy. AI-augmented outreach
@@ -426,6 +444,8 @@ target_companies:
   # --------------------------------------------------------------- INDUSTRIAL
   - vertical: "Aerospace & defense subcontractors"
     industry: "Industrial"
+    typical_net_margin: "8-15% standard subs; 35-45% best-in-class (TransDigm-style aftermarket)"
+    typical_deal_size: "$5M-$50M program contracts; $40M+ sole-source wins; multi-year"
     description: >
       Defense & aerospace subcontractors competing for primes' (Lockheed,
       Boeing, RTX) BD programs. Sourcing program intelligence pre-RFP
