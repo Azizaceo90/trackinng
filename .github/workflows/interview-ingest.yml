@@ -1,9 +1,7 @@
 name: Interview ingest
 
 on:
-  schedule:
-    - cron: "30 */2 * * *"  # every 2 hours, 30 min past the hour
-  workflow_dispatch: {}      # also runnable manually from the Actions tab
+  workflow_dispatch: {}      # manual-only; cron disabled
   push:
     branches: [main]
     paths:

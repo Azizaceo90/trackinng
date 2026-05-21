@@ -1,10 +1,6 @@
 name: AI sales research
 
 on:
-  schedule:
-    # 14:30 UTC = 10:30 AM ET (DST). Runs 30 min before the Monday
-    # research block on aziza.muhammadx's calendar fires at 11am.
-    - cron: "30 14 * * MON"
   workflow_dispatch: {}
   push:
     branches: [main]
