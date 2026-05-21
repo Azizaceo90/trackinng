@@ -280,22 +280,141 @@ def conflicts_with_existing(start_dt: datetime, existing: list[dict],
     return False
 
 
-def extract_company(sender: str, subject: str) -> str:
+def _company_from_domain(domain: str) -> str | None:
+    """Pick a likely company name out of an email domain, or None."""
+    parts = domain.lower().split(".")
+    skip = {"applytojob", "ashbyhq", "teamtailor-mail", "indeed", "lever", "greenhouse",
+            "myworkdayjobs", "smartrecruiters", "icims", "workday", "successfactors",
+            "ziprecruiter", "linkedin", "glassdoor", "gmail", "outlook", "googlemail",
+            "yahoo", "hotmail", "icloud", "proton", "protonmail", "fastmail",
+            "jobs", "careers", "apply", "hire", "hiring", "talent", "recruiting",
+            "mail", "email", "noreply", "smtp", "no-reply"}
+    tlds = {"com", "co", "io", "ai", "net", "org", "us", "uk", "ca"}
+    for part in parts:
+        if part not in skip and len(part) > 2 and part not in tlds:
+            return part.capitalize()
+    return None
+
+
+# Company-name capture: a Capitalized token plus up to 2 more Capitalized
+# tokens. Case-sensitive on purpose — lowercase tokens like "on", "to",
+# "and" must NOT extend the match past the company name.
+_COMPANY_TOKENS = r"([A-Z][\w&'.-]+(?:\s+[A-Z][\w&'.-]+){0,2})"
+
+_DISPLAY_NAME_RE = re.compile(r'^\s*"?([^"<@]+?)"?\s*<')
+_FROM_COMPANY_RE = re.compile(r"(?i:\bfrom)\s+" + _COMPANY_TOKENS)
+_SUBJECT_COMPANY_RE = re.compile(
+    r"(?i:interview\s+(?:with|at|for))\s+" + _COMPANY_TOKENS
+)
+_BODY_COMPANY_RES = [
+    re.compile(r"(?i:\binterview(?:ing)?\s+(?:with|at|for))\s+" + _COMPANY_TOKENS),
+    re.compile(
+        r"(?i:\b(?:thank\s+you|thanks)\s+for\s+"
+        r"(?:applying\s+to|your\s+interest\s+in|reaching\s+out\s+to))\s+"
+        + _COMPANY_TOKENS
+    ),
+    re.compile(r"(?i:\bwe\s+at)\s+" + _COMPANY_TOKENS),
+    re.compile(r"(?i:\bon\s+behalf\s+of)\s+" + _COMPANY_TOKENS),
+]
+
+# Role/seniority noise that often trails the company in subject lines
+# (e.g. "Interview for Globex Senior Role"). Trim from the end of a match.
+_ROLE_NOISE = {"role", "position", "job", "opening", "senior", "junior", "lead",
+               "principal", "staff", "director", "vp", "engineer", "engineering",
+               "manager", "designer", "developer", "analyst", "team"}
+
+
+def _trim_role_suffix(name: str) -> str:
+    tokens = name.split()
+    while tokens and tokens[-1].lower() in _ROLE_NOISE:
+        tokens.pop()
+    return " ".join(tokens) if tokens else name
+
+
+def _company_from_display_name(header: str) -> str | None:
+    """Pull a company name out of an RFC 2822 From-style header's display name.
+
+    Handles: `"Acme Recruiting" <…>`, `John from Acme <…>`, `Acme Talent <…>`.
+    Returns None if the display name is just a person's name with no obvious
+    company token.
+    """
+    m = _DISPLAY_NAME_RE.match(header or "")
+    if not m:
+        return None
+    name = m.group(1).strip()
+    # "John from Acme"
+    f = _FROM_COMPANY_RE.search(name)
+    if f:
+        return f.group(1).strip()
+    # "Acme Recruiting" / "Acme Talent" / "Acme Hiring" — last word is a role,
+    # earlier words are the company.
+    role_words = {"recruiting", "recruiter", "talent", "hiring", "careers",
+                  "people", "team", "hr"}
+    tokens = name.split()
+    if len(tokens) >= 2 and tokens[-1].lower() in role_words:
+        return " ".join(tokens[:-1])
+    return None
+
+
+def extract_company(
+    sender: str,
+    subject: str,
+    body: str = "",
+    ics_organizer: str = "",
+) -> str | None:
+    """Best-effort company-name extraction.
+
+    Returns None when no signal hits; callers decide the fallback title.
+    Signals tried, in order of trust:
+      1. ICS organizer domain
+      2. ICS organizer display name
+      3. Sender email domain
+      4. Sender display name
+      5. Subject "interview with X" pattern
+      6. Body patterns: "interview with X", "thanks for your interest in X", etc.
+    """
+    if ics_organizer:
+        if "@" in ics_organizer:
+            domain = ics_organizer.split("@", 1)[1].rstrip(">").split()[0]
+            guess = _company_from_domain(domain)
+            if guess:
+                return guess
+        guess = _company_from_display_name(ics_organizer)
+        if guess:
+            return guess
+
     if "@" in sender:
         domain = sender.split("@", 1)[1].rstrip(">").split()[0]
-        parts = domain.lower().split(".")
-        skip = {"applytojob", "ashbyhq", "teamtailor-mail", "indeed", "lever", "greenhouse",
-                "myworkdayjobs", "smartrecruiters", "icims", "workday", "successfactors",
-                "ziprecruiter", "linkedin", "glassdoor", "gmail", "outlook"}
-        for part in parts:
-            if part not in skip and len(part) > 2 and part not in {"com", "co", "io", "ai", "net", "org"}:
-                return part.capitalize()
-    # Fallback: take the first segment of the subject after "Interview"
-    m = re.search(r"interview\s+(?:with\s+)?([A-Z][\w&'.-]+(?:\s+[A-Z][\w&'.-]+){0,2})",
-                  subject, re.IGNORECASE)
+        guess = _company_from_domain(domain)
+        if guess:
+            return guess
+
+    guess = _company_from_display_name(sender)
+    if guess:
+        return guess
+
+    m = _SUBJECT_COMPANY_RE.search(subject or "")
     if m:
-        return m.group(1).strip()
-    return "Unknown"
+        return _trim_role_suffix(m.group(1).strip())
+
+    for pat in _BODY_COMPANY_RES:
+        m = pat.search(body or "")
+        if m:
+            return _trim_role_suffix(m.group(1).strip())
+
+    return None
+
+
+def _clean_subject(subject: str) -> str:
+    """Strip Re:/Fwd: prefixes and cap length so it reads as a calendar title."""
+    s = (subject or "").strip()
+    while True:
+        stripped = re.sub(r"^(re|fwd?|fw)\s*:\s*", "", s, flags=re.IGNORECASE)
+        if stripped == s:
+            break
+        s = stripped
+    s = s.strip() or "needs review"
+    return s if len(s) <= 80 else s[:77].rstrip() + "…"
 
 
 def scan(
@@ -388,8 +507,25 @@ def scan(
                                       "start": cand_start.isoformat()})
             continue
 
-        company = extract_company(sender, subject)
-        event_body = _build_event(candidate, thread_id, sender, company)
+        # Gmail's thread-search metadata sometimes returns an empty "from".
+        # Fall back to the actual message's From header (captured on the
+        # candidate dict for the heuristic path; the raw msg has it for ICS).
+        effective_sender = sender or (candidate.get("sender") or "")
+        if not effective_sender and candidate.get("msg"):
+            effective_sender = candidate["msg"].get("From", "")
+
+        if candidate["via"] == "ics":
+            body_text = candidate["event"].get("description", "") or ""
+            ics_organizer = candidate["event"].get("organizer", "") or ""
+        else:
+            body_text = candidate.get("text", "") or ""
+            ics_organizer = ""
+
+        company = extract_company(effective_sender, subject, body=body_text,
+                                  ics_organizer=ics_organizer)
+        title = (f"Interview — {company}" if company
+                 else f"Interview — {_clean_subject(subject)}")
+        event_body = _build_event(candidate, thread_id, effective_sender, title)
 
         if dry_run:
             report["created"].append({"thread": thread_id, "dry_run": True,
@@ -409,12 +545,11 @@ def scan(
     return report
 
 
-def _build_event(candidate: dict, thread_id: str, sender: str, company: str) -> dict:
+def _build_event(candidate: dict, thread_id: str, sender: str, title: str) -> dict:
     if candidate["via"] == "ics":
         ev = candidate["event"]
         start_dt: datetime = ev["dtstart"]
         end_dt: datetime = ev.get("dtend") or (start_dt + timedelta(minutes=45))
-        summary = f"Interview — {company}"
         # Derive meeting details from ICS description if present
         description_src = ev.get("description", "") or ""
         meeting = extract_meeting(description_src)
@@ -422,9 +557,9 @@ def _build_event(candidate: dict, thread_id: str, sender: str, company: str) -> 
     else:
         start_dt = candidate["start"]
         end_dt = start_dt + timedelta(minutes=45)
-        summary = f"Interview — {company}"
         meeting = candidate.get("meeting", {})
         location = meeting.get("join_url", "")
+    summary = title
 
     desc_lines = [
         f"Auto-imported by interview-ingest on {datetime.now(DEFAULT_TZ):%Y-%m-%d %H:%M %Z}.",
