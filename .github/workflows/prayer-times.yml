@@ -1,6 +1,10 @@
 name: Prayer times sync
 
 on:
+  schedule:
+    # 04:30 UTC = 00:30 ET (DST) / 23:30 ET previous day (standard time).
+    # Runs once daily, well after midnight so today's date is correct everywhere.
+    - cron: "30 4 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]

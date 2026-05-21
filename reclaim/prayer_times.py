@@ -57,7 +57,7 @@ def fetch_times(d: date, method: str = "ISNA") -> dict[str, str]:
 def _event_body(prayer: str, when: datetime, duration_min: int) -> dict:
     end = when + timedelta(minutes=duration_min)
     return {
-        "summary": f"[Reclaim] {PRAYER_EMOJI[prayer]} {prayer} Prayer",
+        "summary": f"{PRAYER_EMOJI[prayer]} {prayer} Prayer",
         "description": (
             f"{PRAYER_TAG} {prayer}\n"
             f"Computed locally (reclaim.prayer_calc, ISNA method, Detroit).\n"
