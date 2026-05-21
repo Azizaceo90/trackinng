@@ -427,7 +427,7 @@ def _build_event(candidate: dict, thread_id: str, sender: str, company: str) -> 
         location = meeting.get("join_url", "")
 
     desc_lines = [
-        f"Auto-imported by Reclaim interview-ingest on {datetime.now(DEFAULT_TZ):%Y-%m-%d %H:%M %Z}.",
+        f"Auto-imported by interview-ingest on {datetime.now(DEFAULT_TZ):%Y-%m-%d %H:%M %Z}.",
         f"Source: {sender}",
         f"Gmail thread: {thread_id}",
         f"Via: {candidate['via']}",

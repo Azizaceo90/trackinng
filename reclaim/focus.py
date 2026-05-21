@@ -61,7 +61,7 @@ def defend_focus_time(
                 slot=block,
                 kind=EventKind.FOCUS,
                 movable=True,
-                notes="Reclaim: defended deep-work block",
+                notes="Defended deep-work block",
             )
         )
         needed -= length

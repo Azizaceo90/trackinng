@@ -99,5 +99,5 @@ def _make_event(habit: Habit, slot: TimeSlot) -> Event:
         kind=habit.kind,
         source_id=habit.id,
         movable=True,
-        notes="Reclaim: flexible habit",
+        notes="Flexible habit",
     )
