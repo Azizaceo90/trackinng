@@ -78,21 +78,20 @@ def _find_slot_for_day(
         win_start, win_end = habit.ideal_window
         # Windows that cross midnight (e.g. sleep 23:00→07:00) span `d`
         # into `d+1`. Represent the whole window as a single slot so a
-        # contiguous 8h sleep can fit; busy events from both days count.
+        # contiguous 8h sleep can fit.
         if win_end <= win_start:
             window = TimeSlot(
                 datetime.combine(d, win_start),
                 datetime.combine(d + timedelta(days=1), win_end),
             )
-            busy_today = [
-                e.slot for e in existing
-                if e.slot.start.date() in (d, d + timedelta(days=1))
-            ]
         else:
             window = TimeSlot(datetime.combine(d, win_start), datetime.combine(d, win_end))
-            busy_today = [e.slot for e in existing if e.slot.start.date() == d]
 
-        in_window = subtract(window, busy_today)
+        # Let `subtract` clip against the window — it already filters by
+        # overlap, so events that started the previous night (e.g. sleep
+        # 23:00 → today 07:00) are correctly treated as busy.
+        busy = [e.slot for e in existing]
+        in_window = subtract(window, busy)
         for s in sorted(in_window, key=lambda x: x.start):
             if s.duration >= habit.duration:
                 return TimeSlot(s.start, s.start + habit.duration)
