@@ -115,10 +115,12 @@ class GmailIMAP:
         self.close()
 
     def _search_uids(self, gmail_query: str) -> list[bytes]:
-        # X-GM-RAW lets us pass a native Gmail search string verbatim.
-        typ, data = self._conn.uid(
-            "SEARCH", None, "X-GM-RAW", f'"{gmail_query}"'
-        )
+        # The Gmail X-GM-RAW query contains quotes and parentheses, which break
+        # an IMAP quoted string ("BAD Could not parse command"). Send it as an
+        # IMAP literal instead: imaplib emits `... X-GM-RAW {N}\r\n<query>` and
+        # clears self.literal after the command runs.
+        self._conn.literal = gmail_query.encode("utf-8")
+        typ, data = self._conn.uid("SEARCH", "X-GM-RAW")
         if typ != "OK" or not data or not data[0]:
             return []
         return data[0].split()
