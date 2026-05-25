@@ -42,9 +42,14 @@ def test_is_sent_detects_sent_label():
 
 
 def test_parse_thrid():
+    # bytes input
     meta = b"1 (X-GM-THRID 1790271649293001234 X-GM-LABELS (\\Inbox) RFC822 {123}"
     assert gmail_imap._parse_thrid(meta) == "1790271649293001234"
     assert gmail_imap._parse_thrid(b"no thrid here") is None
+    # str input (the real code path decodes metadata to text before parsing)
+    meta_str = "1 (X-GM-LABELS (\\Inbox) X-GM-THRID 1790271649293009999 RFC822 {123}"
+    assert gmail_imap._parse_thrid(meta_str) == "1790271649293009999"
+    assert gmail_imap._parse_thrid("") is None
 
 
 def test_derive_snippet_from_plaintext():
