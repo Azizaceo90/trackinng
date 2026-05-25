@@ -61,7 +61,27 @@ def _refresh_access_token(refresh_token: str) -> str:
     return out["access_token"]
 
 
+def _service_account_token() -> str | None:
+    """If a service account is configured via env, mint an access token with
+    it (impersonating WORKSPACE_USER_EMAIL via domain-wide delegation).
+
+    Returns None when no service account is configured, so callers fall back
+    to the OAuth refresh-token path.
+    """
+    sa_json = os.environ.get("SERVICE_ACCOUNT_JSON")
+    if not sa_json:
+        return None
+    from reclaim import google_sa  # local import: stdlib-only, no cycle
+    sa_info = json.loads(sa_json)
+    subject = os.environ.get("WORKSPACE_USER_EMAIL") or None
+    return google_sa.access_token(sa_info, [SCOPE], subject=subject)
+
+
 def get_access_token(account: str = "default") -> str:
+    # Prefer the no-expiry service-account path when it's configured.
+    sa = _service_account_token()
+    if sa is not None:
+        return sa
     token = _load_token(account)
     if not token or "refresh_token" not in token:
         sys.exit(
@@ -70,6 +90,13 @@ def get_access_token(account: str = "default") -> str:
             f"Run `python -m reclaim.calendar_fetch auth --account {account}` first."
         )
     return _refresh_access_token(token["refresh_token"])
+
+
+def target_calendar_id(default: str = "primary") -> str:
+    """Calendar to write to. With a service account impersonating a Workspace
+    user, "primary" is that user's calendar, so writes must target the shared
+    personal calendar id from PERSONAL_CALENDAR_ID instead."""
+    return os.environ.get("PERSONAL_CALENDAR_ID") or default
 
 
 def authenticate_print_url() -> None:
@@ -153,6 +180,24 @@ def create_event(access_token: str, body: dict, calendar_id: str = "primary") ->
     return _api(
         "POST", f"/calendars/{urllib.parse.quote(calendar_id)}/events",
         access_token, body=body,
+    )
+
+
+def patch_event(access_token: str, event_id: str, body: dict,
+                calendar_id: str = "primary") -> dict:
+    return _api(
+        "PATCH",
+        f"/calendars/{urllib.parse.quote(calendar_id)}/events/{urllib.parse.quote(event_id)}",
+        access_token, body=body,
+    )
+
+
+def delete_event(access_token: str, event_id: str,
+                 calendar_id: str = "primary") -> None:
+    _api(
+        "DELETE",
+        f"/calendars/{urllib.parse.quote(calendar_id)}/events/{urllib.parse.quote(event_id)}",
+        access_token,
     )
 
 

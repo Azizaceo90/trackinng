@@ -1,17 +1,11 @@
 name: AI sales research
 
 on:
-  schedule:
-    # 14:30 UTC = 10:30 AM ET (DST). Runs 30 min before the Monday
-    # research block on aziza.muhammadx's calendar fires at 11am.
-    - cron: "30 14 * * MON"
+  # Scheduled runs disabled — the research doc generator still relies on an
+  # OAuth Docs/Drive token that expires every 7 days, so the cron would just
+  # fail and email failure notices. Left runnable on demand via the Actions
+  # tab. Re-add the `schedule:` block below to resume automatic runs.
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - "reclaim/research.py"
-      - "reclaim/google_docs.py"
-      - ".github/workflows/research.yml"
 
 permissions:
   contents: read

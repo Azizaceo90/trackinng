@@ -19,8 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.parse
-import urllib.request
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -84,7 +82,8 @@ def _event_body(prayer: str, when: datetime, duration_min: int) -> dict:
     }
 
 
-def _existing_prayer_events(token: str, start: date, end: date) -> dict[tuple[date, str], list[str]]:
+def _existing_prayer_events(token: str, start: date, end: date,
+                            calendar_id: str = "primary") -> dict[tuple[date, str], list[str]]:
     """Map (date, prayer_name) -> [event_id, ...] for prayer events on the calendar.
 
     Returns a list per key so that accidental duplicates are surfaced and
@@ -94,6 +93,7 @@ def _existing_prayer_events(token: str, start: date, end: date) -> dict[tuple[da
         token,
         time_min=datetime.combine(start, datetime.min.time(), tzinfo=DEFAULT_TZ).isoformat(),
         time_max=datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=DEFAULT_TZ).isoformat(),
+        calendar_id=calendar_id,
         max_results=250,
     )
     out: dict[tuple[date, str], list[str]] = {}
@@ -115,11 +115,12 @@ def _existing_prayer_events(token: str, start: date, end: date) -> dict[tuple[da
 def sync(days: int = 14, account: str = "personal2") -> dict:
     """Ensure the next `days` days have accurate prayer events. Idempotent."""
     token = calendar_fetch.get_access_token(account)
+    cal_id = calendar_fetch.target_calendar_id()
     today = date.today()
     horizon_start = today
     horizon_end = today + timedelta(days=days - 1)
 
-    existing = _existing_prayer_events(token, horizon_start, horizon_end)
+    existing = _existing_prayer_events(token, horizon_start, horizon_end, cal_id)
     summary = {"created": 0, "updated": 0, "deleted_duplicate": 0, "deleted_stale": 0, "errors": []}
 
     for offset in range(days):
@@ -136,15 +137,15 @@ def sync(days: int = 14, account: str = "personal2") -> dict:
             body = _event_body(prayer, when, duration)
             ids = existing.pop((d, prayer), [])
             if not ids:
-                calendar_fetch.create_event(token, body)
+                calendar_fetch.create_event(token, body, calendar_id=cal_id)
                 summary["created"] += 1
                 continue
             # Keep (and refresh) the first; any others are duplicates — delete them.
-            _patch_event(token, ids[0], body)
+            calendar_fetch.patch_event(token, ids[0], body, calendar_id=cal_id)
             summary["updated"] += 1
             for dup in ids[1:]:
                 try:
-                    _delete_event(token, dup)
+                    calendar_fetch.delete_event(token, dup, calendar_id=cal_id)
                     summary["deleted_duplicate"] += 1
                 except Exception as ex:
                     summary["errors"].append({"date": str(d), "prayer": prayer, "error": str(ex)})
@@ -154,30 +155,12 @@ def sync(days: int = 14, account: str = "personal2") -> dict:
     for (d, name), ids in existing.items():
         for eid in ids:
             try:
-                _delete_event(token, eid)
+                calendar_fetch.delete_event(token, eid, calendar_id=cal_id)
                 summary["deleted_stale"] += 1
             except Exception as ex:
                 summary["errors"].append({"date": str(d), "prayer": name, "error": str(ex)})
 
     return summary
-
-
-def _patch_event(token: str, event_id: str, body: dict) -> dict:
-    url = f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{urllib.parse.quote(event_id)}"
-    req = urllib.request.Request(
-        url, data=json.dumps(body).encode("utf-8"), method="PATCH",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
-
-
-def _delete_event(token: str, event_id: str) -> None:
-    url = f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{urllib.parse.quote(event_id)}"
-    req = urllib.request.Request(
-        url, method="DELETE", headers={"Authorization": f"Bearer {token}"},
-    )
-    urllib.request.urlopen(req).read()
 
 
 def main(argv: list[str] | None = None) -> None:
