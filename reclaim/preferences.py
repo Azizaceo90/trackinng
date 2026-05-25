@@ -31,12 +31,17 @@ def _parse_duration(s: str | int | float) -> timedelta:
     if isinstance(s, (int, float)):
         return timedelta(minutes=float(s))
     s = s.strip().lower()
+    # Support combined forms like "1h30m" or "2h15m"
+    if "h" in s and s.endswith("m") and not s.endswith("min"):
+        h_part, m_part = s.split("h", 1)
+        m_part = m_part[:-1] or "0"
+        return timedelta(hours=float(h_part), minutes=float(m_part))
+    if s.endswith("min"):
+        return timedelta(minutes=float(s[:-3]))
     if s.endswith("h"):
         return timedelta(hours=float(s[:-1]))
     if s.endswith("m"):
         return timedelta(minutes=float(s[:-1]))
-    if s.endswith("min"):
-        return timedelta(minutes=float(s[:-3]))
     return timedelta(minutes=float(s))
 
 

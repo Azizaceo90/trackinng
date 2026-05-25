@@ -126,14 +126,22 @@ Never write to the calendar without explicit confirmation.
 3. Call `AskUserQuestion` with options: (a) apply all, (b) apply a subset
    (e.g. focus + habits only), (c) cancel.
 4. On approval, call `create_event` / `update_event` / `delete_event` for
-   each approved change. Prefix Reclaim-managed event titles with `[Reclaim]`
-   and include a description marker so they're identifiable later.
+   each approved change. Do **not** add any "[Reclaim]" prefix or word
+   "Reclaim" to event titles or descriptions — the user does not want that
+   branding on their calendar. Use a neutral, hidden marker `[planner-managed]`
+   in the description (last line, lowercase, exact spelling) so the planner
+   can identify and dedupe its own events later. Keep descriptions short
+   and human-readable; the marker is the only required line.
 5. Report the list of affected event IDs + a one-line summary.
 
 ## Rules
 
-- Never delete or modify a user event that lacks the `[Reclaim]` prefix or our
-  description marker.
+- Never delete or modify a user event that lacks the `[planner-managed]`
+  description marker. Events on the user's calendar that pre-date this rule
+  may also be matched by older legacy markers ("Reclaim-managed", a
+  `[Reclaim]` title prefix, or "Reclaim:" in the notes line) — treat those
+  as ours for read/dedup purposes, but on the next write, rewrite the
+  description so only the new `[planner-managed]` marker remains.
 - If `list_calendars` returns multiple writable calendars, ask which to use.
 - All times in the user's local timezone (from `config/preferences.yaml`).
 - If the planner reports density warnings, surface them prominently.

@@ -1,13 +1,5 @@
 # Replace with your real tasks. `reclaim plan` will book them into free time.
 tasks:
-  - id: spec-draft
-    title: Draft Q3 product spec
-    duration: 4h
-    due: "2026-05-22T17:00:00"
-    priority: P1
-    min_chunk: 1h
-    max_chunk: 2h
-
   - id: code-review
     title: Review PR #482
     duration: 45m
