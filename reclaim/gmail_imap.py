@@ -77,10 +77,12 @@ def _decode_header(raw: str | None) -> str:
         return raw
 
 
-def _parse_thrid(fetch_meta: bytes) -> str | None:
-    """Pull the X-GM-THRID value out of a FETCH metadata line."""
-    m = re.search(rb"X-GM-THRID\s+(\d+)", fetch_meta or b"")
-    return m.group(1).decode() if m else None
+def _parse_thrid(fetch_meta) -> str | None:
+    """Pull the X-GM-THRID value out of a FETCH metadata line (str or bytes)."""
+    if isinstance(fetch_meta, (bytes, bytearray)):
+        fetch_meta = fetch_meta.decode("utf-8", errors="replace")
+    m = re.search(r"X-GM-THRID\s+(\d+)", fetch_meta or "")
+    return m.group(1) if m else None
 
 
 # --------------------------------------------------------------- IMAP client ---
