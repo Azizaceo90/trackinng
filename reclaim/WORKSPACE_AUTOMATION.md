@@ -1,19 +1,41 @@
-# No-expiry automation — Workspace setup
+# No-expiry automation setup
 
 Replaces the 7-day OAuth rotation with permanent credentials. After
 this, the GitHub Action runs forever without re-auth.
 
 **Architecture**
 
-- **Gmail read** → IMAP with a personal Gmail [App Password](https://myaccount.google.com/apppasswords).
-  App passwords don't expire until you revoke them.
-- **Calendar write** → Service account in your Google Workspace, with
-  domain-wide delegation, impersonating your Workspace user. Your
-  Workspace user has edit access to your personal calendar via a
-  one-time "share" link. Service accounts use private-key signing, no
-  refresh tokens, no expiry.
+- **Gmail read** → IMAP with a [Gmail App Password](https://myaccount.google.com/apppasswords).
+  App passwords don't expire until you revoke them. Works on free Gmail.
+- **Calendar write** → a service account (private-key signed, no refresh
+  tokens, no expiry).
 
-**Prerequisites:** You're the admin of the Workspace.
+> ## ⭐ Free Gmail (no Google Workspace) — read this first
+>
+> You do **not** need Google Workspace. Workspace is only required for
+> "domain-wide delegation" (the robot impersonating a user). On free
+> Gmail, skip that entirely and instead **share your calendar directly
+> with the service account's email address**:
+>
+> 1. Do **Step 2** (create the service account + download its JSON key).
+>    Copy the service account's email — it looks like
+>    `reclaim-cron@<project>.iam.gserviceaccount.com`.
+> 2. **Skip Step 3** (domain-wide delegation — that's the Workspace-only
+>    part).
+> 3. In **Step 4**, share each calendar with the **service account's
+>    email** (from 2.7) instead of a Workspace user, with **Make changes
+>    to events**. (No invite to accept — service accounts auto-accept.)
+> 4. In **Step 5**, set everything **except** `WORKSPACE_USER_EMAIL` —
+>    leave that one unset. With no `WORKSPACE_USER_EMAIL`, the code
+>    authenticates the robot as itself and writes to the calendars you
+>    shared with it.
+>
+> Everything else (app passwords, the GitHub secrets, the dry-run) is the
+> same. The rest of this doc describes the Workspace/impersonation
+> variant; ignore the delegation bits if you're on free Gmail.
+
+**Prerequisites:** a Google account (free Gmail is fine). Workspace admin
+is only needed for the impersonation variant below.
 
 ---
 
