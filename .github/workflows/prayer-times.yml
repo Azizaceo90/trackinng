@@ -46,6 +46,15 @@ jobs:
           chmod 600 "$HOME/.config/reclaim/gmail_credentials.json"
 
       - name: Sync next 14 days of prayer times
+        env:
+          # When these are set, calendar_fetch uses the no-expiry service
+          # account (impersonating WORKSPACE_USER_EMAIL) and writes to
+          # PERSONAL_CALENDAR_ID. When empty, it falls back to the OAuth
+          # refresh token materialized above. So this works before and after
+          # the Workspace setup with no code change.
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          WORKSPACE_USER_EMAIL: ${{ secrets.WORKSPACE_USER_EMAIL }}
+          PERSONAL_CALENDAR_ID: ${{ secrets.PERSONAL_CALENDAR_ID }}
         run: |
           python -m reclaim.prayer_times sync --days 14 --account personal2 \
             > prayer-sync-report.json

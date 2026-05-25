@@ -1,27 +1,53 @@
-# No-expiry automation — Workspace setup
+# No-expiry automation setup
 
 Replaces the 7-day OAuth rotation with permanent credentials. After
 this, the GitHub Action runs forever without re-auth.
 
 **Architecture**
 
-- **Gmail read** → IMAP with a personal Gmail [App Password](https://myaccount.google.com/apppasswords).
-  App passwords don't expire until you revoke them.
-- **Calendar write** → Service account in your Google Workspace, with
-  domain-wide delegation, impersonating your Workspace user. Your
-  Workspace user has edit access to your personal calendar via a
-  one-time "share" link. Service accounts use private-key signing, no
-  refresh tokens, no expiry.
+- **Gmail read** → IMAP with a [Gmail App Password](https://myaccount.google.com/apppasswords).
+  App passwords don't expire until you revoke them. Works on free Gmail.
+- **Calendar write** → a service account (private-key signed, no refresh
+  tokens, no expiry).
 
-**Prerequisites:** You're the admin of the Workspace.
+> ## ⭐ Free Gmail (no Google Workspace) — read this first
+>
+> You do **not** need Google Workspace. Workspace is only required for
+> "domain-wide delegation" (the robot impersonating a user). On free
+> Gmail, skip that entirely and instead **share your calendar directly
+> with the service account's email address**:
+>
+> 1. Do **Step 2** (create the service account + download its JSON key).
+>    Copy the service account's email — it looks like
+>    `reclaim-cron@<project>.iam.gserviceaccount.com`.
+> 2. **Skip Step 3** (domain-wide delegation — that's the Workspace-only
+>    part).
+> 3. In **Step 4**, share each calendar with the **service account's
+>    email** (from 2.7) instead of a Workspace user, with **Make changes
+>    to events**. (No invite to accept — service accounts auto-accept.)
+> 4. In **Step 5**, set everything **except** `WORKSPACE_USER_EMAIL` —
+>    leave that one unset. With no `WORKSPACE_USER_EMAIL`, the code
+>    authenticates the robot as itself and writes to the calendars you
+>    shared with it.
+>
+> Everything else (app passwords, the GitHub secrets, the dry-run) is the
+> same. The rest of this doc describes the Workspace/impersonation
+> variant; ignore the delegation bits if you're on free Gmail.
+
+**Prerequisites:** a Google account (free Gmail is fine). Workspace admin
+is only needed for the impersonation variant below.
 
 ---
 
-## Step 1 — Generate a Gmail App Password (2 min)
+## Step 1 — Generate Gmail App Passwords (4 min)
 
-Personal Gmail (`muhammadaziza732@gmail.com`):
+Interview-ingest scans **both** Gmail accounts, so generate an app
+password on **each** (prayer-times only needs Calendar, no Gmail):
 
-1. Make sure 2-Step Verification is on at
+For **`muhammadaziza732@gmail.com`** and again for
+**`aziza.muhammadx@gmail.com`**:
+
+1. Sign in to that account. Make sure 2-Step Verification is on at
    <https://myaccount.google.com/security>. (App passwords are gated
    behind 2FA.)
 2. Open <https://myaccount.google.com/apppasswords>
@@ -29,8 +55,9 @@ Personal Gmail (`muhammadaziza732@gmail.com`):
 4. Click **Create**. Google shows a 16-character password in a yellow
    box (e.g. `abcd efgh ijkl mnop`). Copy it now — you can't see it
    again.
-5. Keep this open in a tab; you'll paste it as a GitHub secret in
-   step 5.
+5. Note which password goes with which account — in step 5 the
+   muhammadaziza732 one is `GMAIL_APP_PASSWORD` and the aziza.muhammadx
+   one is `GMAIL_APP_PASSWORD_PERSONAL2`.
 
 ---
 
@@ -70,22 +97,23 @@ Reuses your existing GCP project (`calendar-intergration-496519`).
 
 ---
 
-## Step 4 — Share your personal calendar with your Workspace user (1 min)
+## Step 4 — Share BOTH calendars with your Workspace user (2 min)
 
-So the service account (impersonating your Workspace user) can write
-events to your personal calendar.
+The service account impersonates one Workspace user, so every calendar
+it writes to must be shared with that user. Interviews land on both the
+muhammadaziza732 and aziza.muhammadx calendars; prayer times land on
+aziza.muhammadx. So share **both**.
 
-1. Open <https://calendar.google.com> while signed in as your **personal
-   Gmail** account
-2. Left sidebar → hover your name under "My calendars" → ⋮ → **Settings
-   and sharing**
-3. Scroll to **Share with specific people or groups** → **+ Add people**
-4. Type your **Workspace email address**
-5. **Permissions:** **Make changes to events**
-6. Click **Send**
-7. Open the invite email in your Workspace inbox (or accept via the
-   Calendar UI). Once accepted, the calendar appears on your Workspace
-   account too.
+For **`muhammadaziza732@gmail.com`** and again for
+**`aziza.muhammadx@gmail.com`**:
+
+1. Open <https://calendar.google.com> signed in as that account.
+2. Left sidebar → hover the calendar under "My calendars" → ⋮ →
+   **Settings and sharing**.
+3. **Share with specific people or groups** → **+ Add people**.
+4. Type your **Workspace email address** (`WORKSPACE_USER_EMAIL`).
+5. **Permissions: Make changes to events.**
+6. **Send**, then accept the invite from the Workspace inbox.
 
 ---
 
@@ -101,31 +129,52 @@ and **delete** the old ones:
 - `GMAIL_REFRESH_TOKEN`
 - `CALENDAR_REFRESH_TOKEN`
 
-Then **create** these four new ones:
+Then **create** these secrets:
 
-| Name                          | Value                                                                                          |
-|-------------------------------|-----------------------------------------------------------------------------------------------|
-| `GMAIL_ADDRESS`               | `muhammadaziza732@gmail.com`                                                                  |
-| `GMAIL_APP_PASSWORD`          | The 16-char password from step 1 (paste with or without spaces — IMAP accepts either)         |
-| `SERVICE_ACCOUNT_JSON`        | The **entire contents** of the JSON file downloaded in step 2.8                               |
-| `WORKSPACE_USER_EMAIL`        | The Workspace email you used in step 3 (this is the user the service account impersonates)    |
-| `PERSONAL_CALENDAR_ID`        | `muhammadaziza732@gmail.com` (your personal Gmail address is the ID of your default calendar) |
+| Name                            | Value                                                                                       |
+|---------------------------------|---------------------------------------------------------------------------------------------|
+| `GMAIL_ADDRESS`                 | `muhammadaziza732@gmail.com`                                                                 |
+| `GMAIL_APP_PASSWORD`            | muhammadaziza732 app password from step 1 (spaces ok — IMAP accepts either)                  |
+| `GMAIL_ADDRESS_PERSONAL2`       | `aziza.muhammadx@gmail.com`                                                                  |
+| `GMAIL_APP_PASSWORD_PERSONAL2`  | aziza.muhammadx app password from step 1                                                     |
+| `SERVICE_ACCOUNT_JSON`          | The **entire contents** of the JSON file downloaded in step 2.8                             |
+| `WORKSPACE_USER_EMAIL`          | The Workspace email from step 3 (the user the service account impersonates)                  |
+| `CALENDAR_ID_DEFAULT`           | `muhammadaziza732@gmail.com` (interviews from the default account land here)                 |
+| `CALENDAR_ID_PERSONAL2`         | `aziza.muhammadx@gmail.com` (interviews from the personal2 account land here)                |
+| `PERSONAL_CALENDAR_ID`          | `aziza.muhammadx@gmail.com` (used by prayer-times)                                           |
+
+Each value is read straight from the environment by the code — the IMAP
+backend turns on per account when its `GMAIL_APP_PASSWORD*` is present,
+and the service-account calendar path turns on when `SERVICE_ACCOUNT_JSON`
+is present. Until you add them, the crons keep using the old OAuth
+tokens, so you can add the secrets and flip over with zero downtime.
+
+> **Note:** the **research** cron also writes a Google Doc, which still
+> uses an OAuth token (Docs/Drive) and is *not* covered by this
+> service-account setup — it will still hit the 7-day expiry. Only
+> prayer-times and interview-ingest become truly no-expiry here.
 
 ---
 
-## Step 6 — Trigger a fresh run
+## Step 6 — Validate with a dry run BEFORE trusting it
 
-Once steps 1-5 are done, push any small change (or wait for the next
-2-hour cron). The new workflow:
+The IMAP + service-account paths can't be exercised by CI tests — they
+need a real mailbox/calendar — so do one manual dry run first.
 
-- Connects to Gmail over IMAP with your App Password
-- Signs Calendar API requests with the service account's private key,
-  impersonating your Workspace user
-- Writes events to your personal calendar via the share you set up in
-  step 4
+1. GitHub → **Actions** → **Interview ingest** → **Run workflow**.
+2. Open the run. The scan steps print a JSON report. Confirm:
+   - No auth errors (no 401/403, no "invalid_grant", no IMAP login fail).
+   - `threads_examined` is > 0 (IMAP search is returning mail).
+   - `created` / `skipped` look sane.
+3. If the dry run looks right, the scheduled runs will do the same thing
+   for real.
 
-**Verify it worked:** the run goes green, no token expiry warning.
-From now on the cron runs forever — no re-auth, no rotation.
+(To dry-run locally without writing events, the scan command supports
+`--dry-run`.)
+
+**Once validated:** the cron runs forever — no re-auth, no rotation, no
+7-day expiry, no verification wall (because there's no OAuth restricted
+scope in play anymore).
 
 ---
 

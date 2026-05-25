@@ -66,20 +66,37 @@ jobs:
             python -c "import json,sys; json.load(open(sys.argv[1])); print('OK', sys.argv[1])" "$f"
           done
 
+      # When the IMAP app-password / service-account secrets are set, the
+      # scan uses the no-expiry backends (IMAP for Gmail, service account for
+      # Calendar); when they're empty it falls back to the OAuth tokens
+      # materialized above. CALENDAR_ID_* must be set under the service
+      # account so each account writes to its own calendar.
       - name: Scan default Gmail (muhammadaziza732) -> default calendar
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          WORKSPACE_USER_EMAIL: ${{ secrets.WORKSPACE_USER_EMAIL }}
         run: |
           python -m reclaim.interviews scan --days 14 \
             --gmail-account default \
             --calendar-account default \
+            --calendar-id "${{ secrets.CALENDAR_ID_DEFAULT }}" \
             > report-default.json
           echo "--- default summary ---"
           python -m json.tool report-default.json | head -20
 
       - name: Scan personal2 Gmail (aziza.muhammadx) -> personal2 calendar
+        env:
+          GMAIL_ADDRESS_PERSONAL2: ${{ secrets.GMAIL_ADDRESS_PERSONAL2 }}
+          GMAIL_APP_PASSWORD_PERSONAL2: ${{ secrets.GMAIL_APP_PASSWORD_PERSONAL2 }}
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          WORKSPACE_USER_EMAIL: ${{ secrets.WORKSPACE_USER_EMAIL }}
         run: |
           python -m reclaim.interviews scan --days 14 \
             --gmail-account personal2 \
             --calendar-account personal2 \
+            --calendar-id "${{ secrets.CALENDAR_ID_PERSONAL2 }}" \
             > report-personal2.json
           echo "--- personal2 summary ---"
           python -m json.tool report-personal2.json | head -20

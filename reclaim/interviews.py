@@ -166,14 +166,25 @@ def _parse_ics_dt(line: str) -> datetime | None:
         return None
 
 
-def find_ics_attachment(msg: Message, access_token: str, message_id: str) -> str | None:
-    """Look through the parsed message for a text/calendar part, then fetch
-    its body if it's referenced by an attachment id."""
+def ics_from_message(msg: Message) -> str | None:
+    """Return the text/calendar body from a fully-parsed message, or None.
+
+    Works for any backend that hands us a complete MIME message (Gmail API
+    format=raw, or IMAP RFC822) — no extra network call needed."""
     for part in msg.walk():
         if part.get_content_type() == "text/calendar":
             payload = part.get_payload(decode=True)
             if payload:
                 return payload.decode("utf-8", errors="replace")
+    return None
+
+
+def find_ics_attachment(msg: Message, access_token: str, message_id: str) -> str | None:
+    """Look through the parsed message for a text/calendar part, then fetch
+    its body via the Gmail API if the inline part was empty."""
+    inline = ics_from_message(msg)
+    if inline:
+        return inline
     # Fallback: pull the attachment via API (some MIME parts have empty payload)
     full = _api_get(
         f"/users/me/messages/{message_id}", access_token, {"format": "full"}
@@ -280,22 +291,207 @@ def conflicts_with_existing(start_dt: datetime, existing: list[dict],
     return False
 
 
-def extract_company(sender: str, subject: str) -> str:
+def _company_from_domain(domain: str) -> str | None:
+    """Pick a likely company name out of an email domain, or None."""
+    parts = domain.lower().split(".")
+    skip = {"applytojob", "ashbyhq", "teamtailor-mail", "indeed", "lever", "greenhouse",
+            "myworkdayjobs", "smartrecruiters", "icims", "workday", "successfactors",
+            "ziprecruiter", "linkedin", "glassdoor", "gmail", "outlook", "googlemail",
+            "yahoo", "hotmail", "icloud", "proton", "protonmail", "fastmail",
+            "jobs", "careers", "apply", "hire", "hiring", "talent", "recruiting",
+            "mail", "email", "noreply", "smtp", "no-reply"}
+    tlds = {"com", "co", "io", "ai", "net", "org", "us", "uk", "ca"}
+    for part in parts:
+        if part not in skip and len(part) > 2 and part not in tlds:
+            return part.capitalize()
+    return None
+
+
+# Company-name capture: a Capitalized token plus up to 2 more Capitalized
+# tokens. Case-sensitive on purpose — lowercase tokens like "on", "to",
+# "and" must NOT extend the match past the company name.
+_COMPANY_TOKENS = r"([A-Z][\w&'.-]+(?:\s+[A-Z][\w&'.-]+){0,2})"
+
+_DISPLAY_NAME_RE = re.compile(r'^\s*"?([^"<@]+?)"?\s*<')
+_FROM_COMPANY_RE = re.compile(r"(?i:\bfrom)\s+" + _COMPANY_TOKENS)
+_SUBJECT_COMPANY_RE = re.compile(
+    r"(?i:interview\s+(?:with|at|for))\s+" + _COMPANY_TOKENS
+)
+_BODY_COMPANY_RES = [
+    re.compile(r"(?i:\binterview(?:ing)?\s+(?:with|at|for))\s+" + _COMPANY_TOKENS),
+    re.compile(
+        r"(?i:\b(?:thank\s+you|thanks)\s+for\s+"
+        r"(?:applying\s+to|your\s+interest\s+in|reaching\s+out\s+to))\s+"
+        + _COMPANY_TOKENS
+    ),
+    re.compile(r"(?i:\bwe\s+at)\s+" + _COMPANY_TOKENS),
+    re.compile(r"(?i:\bon\s+behalf\s+of)\s+" + _COMPANY_TOKENS),
+]
+
+# Role/seniority noise that often trails the company in subject lines
+# (e.g. "Interview for Globex Senior Role"). Trim from the end of a match.
+_ROLE_NOISE = {"role", "position", "job", "opening", "senior", "junior", "lead",
+               "principal", "staff", "director", "vp", "engineer", "engineering",
+               "manager", "designer", "developer", "analyst", "team"}
+
+
+def _trim_role_suffix(name: str) -> str:
+    tokens = name.split()
+    while tokens and tokens[-1].lower() in _ROLE_NOISE:
+        tokens.pop()
+    return " ".join(tokens) if tokens else name
+
+
+def _company_from_display_name(header: str) -> str | None:
+    """Pull a company name out of an RFC 2822 From-style header's display name.
+
+    Handles: `"Acme Recruiting" <…>`, `John from Acme <…>`, `Acme Talent <…>`.
+    Returns None if the display name is just a person's name with no obvious
+    company token.
+    """
+    m = _DISPLAY_NAME_RE.match(header or "")
+    if not m:
+        return None
+    name = m.group(1).strip()
+    # "John from Acme"
+    f = _FROM_COMPANY_RE.search(name)
+    if f:
+        return f.group(1).strip()
+    # "Acme Recruiting" / "Acme Talent" / "Acme Hiring" — last word is a role,
+    # earlier words are the company.
+    role_words = {"recruiting", "recruiter", "talent", "hiring", "careers",
+                  "people", "team", "hr"}
+    tokens = name.split()
+    if len(tokens) >= 2 and tokens[-1].lower() in role_words:
+        return " ".join(tokens[:-1])
+    return None
+
+
+def extract_company(
+    sender: str,
+    subject: str,
+    body: str = "",
+    ics_organizer: str = "",
+) -> str | None:
+    """Best-effort company-name extraction.
+
+    Returns None when no signal hits; callers decide the fallback title.
+    Signals tried, in order of trust:
+      1. ICS organizer domain
+      2. ICS organizer display name
+      3. Sender email domain
+      4. Sender display name
+      5. Subject "interview with X" pattern
+      6. Body patterns: "interview with X", "thanks for your interest in X", etc.
+    """
+    if ics_organizer:
+        if "@" in ics_organizer:
+            domain = ics_organizer.split("@", 1)[1].rstrip(">").split()[0]
+            guess = _company_from_domain(domain)
+            if guess:
+                return guess
+        guess = _company_from_display_name(ics_organizer)
+        if guess:
+            return guess
+
     if "@" in sender:
         domain = sender.split("@", 1)[1].rstrip(">").split()[0]
-        parts = domain.lower().split(".")
-        skip = {"applytojob", "ashbyhq", "teamtailor-mail", "indeed", "lever", "greenhouse",
-                "myworkdayjobs", "smartrecruiters", "icims", "workday", "successfactors",
-                "ziprecruiter", "linkedin", "glassdoor", "gmail", "outlook"}
-        for part in parts:
-            if part not in skip and len(part) > 2 and part not in {"com", "co", "io", "ai", "net", "org"}:
-                return part.capitalize()
-    # Fallback: take the first segment of the subject after "Interview"
-    m = re.search(r"interview\s+(?:with\s+)?([A-Z][\w&'.-]+(?:\s+[A-Z][\w&'.-]+){0,2})",
-                  subject, re.IGNORECASE)
+        guess = _company_from_domain(domain)
+        if guess:
+            return guess
+
+    guess = _company_from_display_name(sender)
+    if guess:
+        return guess
+
+    m = _SUBJECT_COMPANY_RE.search(subject or "")
     if m:
-        return m.group(1).strip()
-    return "Unknown"
+        return _trim_role_suffix(m.group(1).strip())
+
+    for pat in _BODY_COMPANY_RES:
+        m = pat.search(body or "")
+        if m:
+            return _trim_role_suffix(m.group(1).strip())
+
+    return None
+
+
+def _clean_subject(subject: str) -> str:
+    """Strip Re:/Fwd: prefixes and cap length so it reads as a calendar title."""
+    s = (subject or "").strip()
+    while True:
+        stripped = re.sub(r"^(re|fwd?|fw)\s*:\s*", "", s, flags=re.IGNORECASE)
+        if stripped == s:
+            break
+        s = stripped
+    s = s.strip() or "needs review"
+    return s if len(s) <= 80 else s[:77].rstrip() + "…"
+
+
+class _ApiGmailBackend:
+    """Gmail via the HTTP API + OAuth token (the original backend)."""
+
+    def __init__(self, account: str):
+        self.token = gmail_access_token(account)
+
+    def search(self, query: str, max_results: int) -> list[dict]:
+        return gmail_search(query, self.token, max_results=max_results)
+
+    def inbound_messages(self, thread_meta: dict) -> list[tuple[Message, str]]:
+        thread = _api_get(
+            f"/users/me/threads/{thread_meta['thread_id']}", self.token,
+            {"format": "minimal"},
+        )
+        out: list[tuple[Message, str]] = []
+        for m in thread.get("messages", []):
+            if "SENT" in (m.get("labelIds") or []):
+                continue
+            out.append((fetch_raw_message(m["id"], self.token), m["id"]))
+        return out
+
+    def ics_text(self, msg: Message, msg_id: str) -> str | None:
+        return find_ics_attachment(msg, self.token, msg_id)
+
+    def close(self) -> None:
+        pass
+
+
+class _ImapGmailBackend:
+    """Gmail via IMAP + app password — no OAuth, no token expiry."""
+
+    def __init__(self, account: str):
+        from reclaim import gmail_imap
+        self.client = gmail_imap.GmailIMAP(account)
+        self._threads: dict[str, dict] = {}
+
+    def search(self, query: str, max_results: int) -> list[dict]:
+        threads = self.client.search_threads(query, max_results=max_results)
+        for t in threads:
+            self._threads[t["thread_id"]] = t
+        return threads
+
+    def inbound_messages(self, thread_meta: dict) -> list[tuple[Message, str]]:
+        t = self._threads.get(thread_meta["thread_id"], thread_meta)
+        return [
+            (m["message"], str(m["uid"]))
+            for m in t.get("_messages", [])
+            if not m["is_sent"]
+        ]
+
+    def ics_text(self, msg: Message, msg_id: str) -> str | None:
+        return ics_from_message(msg)
+
+    def close(self) -> None:
+        self.client.close()
+
+
+def _make_gmail_backend(account: str):
+    """Prefer the no-expiry IMAP backend when an app password is configured;
+    otherwise fall back to the OAuth HTTP-API backend."""
+    from reclaim import gmail_imap
+    if gmail_imap.available(account):
+        return _ImapGmailBackend(account)
+    return _ApiGmailBackend(account)
 
 
 def scan(
@@ -305,19 +501,28 @@ def scan(
     calendar_account: str = "default",
     dry_run: bool = False,
     horizon_days: int = 60,
+    calendar_id: str | None = None,
 ) -> dict:
-    gmail_token = gmail_access_token(gmail_account)
+    backend = _make_gmail_backend(gmail_account)
     cal_token = calendar_fetch.get_access_token(calendar_account)
+    # Under a service account the impersonated user is fixed, so the target
+    # calendar must be passed explicitly per account (default vs personal2);
+    # falls back to the global PERSONAL_CALENDAR_ID / "primary".
+    cal_id = calendar_id or calendar_fetch.target_calendar_id()
 
     # Pull existing calendar events for the horizon (to dedupe).
     now = datetime.now(DEFAULT_TZ)
     time_min = now.isoformat()
     time_max = (now + timedelta(days=horizon_days)).isoformat()
     existing = calendar_fetch.list_events(
-        cal_token, time_min=time_min, time_max=time_max,
+        cal_token, time_min=time_min, time_max=time_max, calendar_id=cal_id,
     )
 
-    threads = gmail_search(INTERVIEW_QUERY.format(days=days), gmail_token, max_results=30)
+    try:
+        threads = backend.search(INTERVIEW_QUERY.format(days=days), max_results=30)
+    except Exception:
+        backend.close()
+        raise
     report: dict = {
         "scanned_at": now.isoformat(),
         "threads_examined": len(threads),
@@ -343,19 +548,13 @@ def scan(
         # Walk every message in the thread, INBOUND only. Skip anything
         # you sent — quoted proposed times in your own replies were
         # tripping the heuristic and creating phantom events.
-        thread = _api_get(
-            f"/users/me/threads/{thread_id}", gmail_token, {"format": "minimal"}
-        )
         candidate = None
-        for m in thread.get("messages", []):
-            if "SENT" in (m.get("labelIds") or []):
-                continue
-            msg = fetch_raw_message(m["id"], gmail_token)
-            ics_text = find_ics_attachment(msg, gmail_token, m["id"])
+        for msg, msg_id in backend.inbound_messages(t):
+            ics_text = backend.ics_text(msg, msg_id)
             if ics_text:
                 ev = parse_ics(ics_text)
                 if ev and ev.get("dtstart") and ev["dtstart"] > now:
-                    candidate = {"via": "ics", "event": ev, "msg": msg, "msg_id": m["id"]}
+                    candidate = {"via": "ics", "event": ev, "msg": msg, "msg_id": msg_id}
                     break
             # Heuristic fallback. Require confirmation language in the SAME
             # message that contains a parseable future date — otherwise we
@@ -371,7 +570,7 @@ def scan(
                     meeting = extract_meeting(text)
                     candidate = {"via": "heuristic", "start": dt,
                                  "text": text, "meeting": meeting,
-                                 "msg": msg, "msg_id": m["id"],
+                                 "msg": msg, "msg_id": msg_id,
                                  "sender": msg.get("From", "")}
 
         if not candidate:
@@ -388,15 +587,32 @@ def scan(
                                       "start": cand_start.isoformat()})
             continue
 
-        company = extract_company(sender, subject)
-        event_body = _build_event(candidate, thread_id, sender, company)
+        # Gmail's thread-search metadata sometimes returns an empty "from".
+        # Fall back to the actual message's From header (captured on the
+        # candidate dict for the heuristic path; the raw msg has it for ICS).
+        effective_sender = sender or (candidate.get("sender") or "")
+        if not effective_sender and candidate.get("msg"):
+            effective_sender = candidate["msg"].get("From", "")
+
+        if candidate["via"] == "ics":
+            body_text = candidate["event"].get("description", "") or ""
+            ics_organizer = candidate["event"].get("organizer", "") or ""
+        else:
+            body_text = candidate.get("text", "") or ""
+            ics_organizer = ""
+
+        company = extract_company(effective_sender, subject, body=body_text,
+                                  ics_organizer=ics_organizer)
+        title = (f"Interview — {company}" if company
+                 else f"Interview — {_clean_subject(subject)}")
+        event_body = _build_event(candidate, thread_id, effective_sender, title)
 
         if dry_run:
             report["created"].append({"thread": thread_id, "dry_run": True,
                                        "event": event_body, "via": candidate["via"]})
             continue
 
-        created = calendar_fetch.create_event(cal_token, event_body)
+        created = calendar_fetch.create_event(cal_token, event_body, calendar_id=cal_id)
         report["created"].append({
             "thread": thread_id,
             "event_id": created.get("id"),
@@ -406,15 +622,15 @@ def scan(
             "html_link": created.get("htmlLink"),
         })
 
+    backend.close()
     return report
 
 
-def _build_event(candidate: dict, thread_id: str, sender: str, company: str) -> dict:
+def _build_event(candidate: dict, thread_id: str, sender: str, title: str) -> dict:
     if candidate["via"] == "ics":
         ev = candidate["event"]
         start_dt: datetime = ev["dtstart"]
         end_dt: datetime = ev.get("dtend") or (start_dt + timedelta(minutes=45))
-        summary = f"Interview — {company}"
         # Derive meeting details from ICS description if present
         description_src = ev.get("description", "") or ""
         meeting = extract_meeting(description_src)
@@ -422,9 +638,9 @@ def _build_event(candidate: dict, thread_id: str, sender: str, company: str) -> 
     else:
         start_dt = candidate["start"]
         end_dt = start_dt + timedelta(minutes=45)
-        summary = f"Interview — {company}"
         meeting = candidate.get("meeting", {})
         location = meeting.get("join_url", "")
+    summary = title
 
     desc_lines = [
         f"Auto-imported by interview-ingest on {datetime.now(DEFAULT_TZ):%Y-%m-%d %H:%M %Z}.",
@@ -456,6 +672,10 @@ def main(argv: list[str] | None = None) -> None:
                    help="How many days of Gmail to scan (default: 14)")
     s.add_argument("--gmail-account", default="default")
     s.add_argument("--calendar-account", default="default")
+    s.add_argument("--calendar-id", default=None,
+                   help="Explicit calendar id to write to (overrides "
+                        "PERSONAL_CALENDAR_ID; needed when a service account "
+                        "writes to per-account calendars).")
     s.add_argument("--horizon-days", type=int, default=60,
                    help="How far ahead on the calendar to dedupe against (default: 60)")
     s.add_argument("--dry-run", action="store_true",
@@ -468,6 +688,7 @@ def main(argv: list[str] | None = None) -> None:
             calendar_account=args.calendar_account,
             horizon_days=args.horizon_days,
             dry_run=args.dry_run,
+            calendar_id=args.calendar_id,
         )
         json.dump(report, sys.stdout, indent=2, default=str)
         sys.stdout.write("\n")
