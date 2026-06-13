@@ -58,11 +58,19 @@ INTERVIEW_QUERY = (
 # ----------------------------------------------------------------- triage ---
 
 SKIP_PATTERNS = re.compile(
-    r"\b(canceled|cancelled|reschedul|unfortunately|"
+    r"\b(canceled|cancelled|reschedul[a-z]*|unfortunately|"
     r"not move forward|next time|thank you for interviewing|"
     r"interview update|thank you for your time|"
     r"we have decided|moved to the next step|"
     r"are no longer moving|been filled|filled the position)\b",
+    re.IGNORECASE,
+)
+# Rejection / status language, separate from cancel/reschedule so the latter
+# can be neutralised when it's only sign-off boilerplate.
+_REJECTION_PATTERNS = re.compile(
+    r"\b(unfortunately|not move forward|next time|thank you for interviewing|"
+    r"interview update|thank you for your time|we have decided|"
+    r"moved to the next step|are no longer moving|been filled|filled the position)\b",
     re.IGNORECASE,
 )
 CONFIRM_PATTERNS = re.compile(
@@ -76,7 +84,10 @@ CONFIRM_PATTERNS = re.compile(
     r"(i'?ll|i will) (be )?call(ing)? you|(i'?ll|i will) be calling|"
     r"call(ing)? you (from|at)|"
     r"look(ing)? forward to (our|the|your) (call|chat)|"
-    r"(our|your) (call|chat|phone screen|interview) is (set|scheduled|confirmed))\b",
+    r"(our|your) (call|chat|phone screen|interview) is (set|scheduled|confirmed)|"
+    # Reschedule notices that carry a NEW time — re-book at the new slot.
+    r"reschedul(ed|e)?\s+(to|for)|moved (to|your interview to)|"
+    r"new time (is|of|will be)|updated (time|to))\b",
     re.IGNORECASE,
 )
 # Recruiter *agreeing* to a time you proposed earlier in the thread. Distinct
@@ -95,6 +106,12 @@ AGREE_PATTERNS = re.compile(
 ASYNC_DOMAINS = {"hireflix.com", "sparkhire.com", "vidcruiter.com", "spark.hire"}
 ASYNC_HINT = re.compile(r"\b(video interview|automated|on your own time|"
                         r"complete the video|record your)\b", re.IGNORECASE)
+# "let me know if you need to reschedule or cancel" is standard sign-off
+# boilerplate on a *confirmation* — it must not read as an actual cancel/move.
+_RESCHEDULE_BOILERPLATE = re.compile(
+    r"\b(if you|let me know if|feel free|should you|in case|need to reschedule or cancel)\b",
+    re.IGNORECASE,
+)
 
 
 def is_skip(subject: str, snippet: str, sender: str) -> str | None:
@@ -102,11 +119,14 @@ def is_skip(subject: str, snippet: str, sender: str) -> str | None:
     haystack = f"{subject}\n{snippet}".lower()
     sender_lower = sender.lower()
     if SKIP_PATTERNS.search(haystack):
-        if "canceled" in haystack or "cancelled" in haystack:
+        boilerplate = bool(_RESCHEDULE_BOILERPLATE.search(haystack))
+        if ("canceled" in haystack or "cancelled" in haystack) and not boilerplate:
             return "cancelled"
-        if "reschedul" in haystack:
+        if "reschedul" in haystack and not boilerplate:
             return "reschedule"
-        return "rejection_or_status"
+        # A genuine rejection/status term (not just cancel/reschedule boilerplate).
+        if _REJECTION_PATTERNS.search(haystack):
+            return "rejection_or_status"
     if any(d in sender_lower for d in ASYNC_DOMAINS) or ASYNC_HINT.search(haystack):
         return "async"
     return None
@@ -437,11 +457,41 @@ def parse_datetime_from_text(text: str, default_year: int,
         return None
 
 
+def parse_duration_minutes(text: str) -> int | None:
+    """Pull a stated meeting length ('20-30 minute call', '1 hour', 'half hour')
+    from free text. Returns minutes, or None when nothing plausible is stated.
+
+    For a range we take the longer end so the block fully covers the call."""
+    t = (text or "").lower()
+    m = re.search(r"\b(\d{1,3})\s*(?:-|–|—|to)\s*(\d{1,3})\s*(?:min\b|minute)", t)
+    if m:
+        mins = max(int(m.group(1)), int(m.group(2)))
+    elif re.search(r"\bhalf[\s-]?(?:an\s+)?hour\b", t):
+        mins = 30
+    elif re.search(r"\b(?:an|one|1)\s+hour\b", t):
+        mins = 60
+    else:
+        m = re.search(r"\b(\d{1,3})[\s-]*(?:min\b|minute)", t)
+        if m:
+            mins = int(m.group(1))
+        else:
+            m = re.search(r"\b(\d(?:\.\d)?)[\s-]*(?:hour|hr)s?\b", t)
+            if not m:
+                return None
+            mins = int(float(m.group(1)) * 60)
+    return mins if 5 <= mins <= 480 else None
+
+
 # -------------------------------------------------------------- pipeline ---
 
 
 def gmail_search(query: str, access_token: str, max_results: int = 25) -> list[dict]:
     return search_threads(query, access_token, max_results=max_results)
+
+
+# First line of every event description we write — used to recognise our own
+# auto-created events when cleaning up after a cancellation/reschedule.
+INGEST_MARKER = "Auto-imported by interview-ingest"
 
 
 def already_on_calendar(thread_id: str, existing: list[dict]) -> bool:
@@ -450,6 +500,35 @@ def already_on_calendar(thread_id: str, existing: list[dict]) -> bool:
         if thread_id in desc:
             return True
     return False
+
+
+def _thread_event_ids(thread_id: str, existing: list[dict]) -> list[str]:
+    """Calendar ids of events WE auto-created for this Gmail thread."""
+    ids = []
+    for e in existing:
+        desc = e.get("description", "") or ""
+        if INGEST_MARKER in desc and thread_id in desc and e.get("id"):
+            ids.append(e["id"])
+    return ids
+
+
+def _remove_thread_events(cal_token, cal_id, thread_id, existing, dry_run):
+    """Delete the events we previously auto-created for a thread (cancellation /
+    reschedule). Also drops them from the in-memory `existing` list so later
+    dedupe in the same run doesn't trip over a now-deleted event. Returns the
+    ids removed."""
+    ids = _thread_event_ids(thread_id, existing)
+    if not ids:
+        return []
+    if not dry_run:
+        for eid in ids:
+            try:
+                calendar_fetch.delete_event(cal_token, eid, calendar_id=cal_id)
+            except Exception:
+                pass
+    removed = set(ids)
+    existing[:] = [e for e in existing if e.get("id") not in removed]
+    return ids
 
 
 def conflicts_with_existing(start_dt: datetime, existing: list[dict],
@@ -766,6 +845,7 @@ def _find_candidate(backend, thread_meta: dict, now: datetime) -> dict | None:
          from creating phantom events.
     """
     last_proposed: datetime | None = None  # newest future time seen in-thread
+    last_duration: int | None = None       # newest stated call length, any message
     for msg, msg_id, is_sent in backend.thread_messages(thread_meta):
         if not is_sent:
             ics_text = backend.ics_text(msg, msg_id)
@@ -783,6 +863,9 @@ def _find_candidate(backend, thread_meta: dict, now: datetime) -> dict | None:
         )
         if own_dt and own_dt > now:
             last_proposed = own_dt
+        dur = parse_duration_minutes(text)
+        if dur:
+            last_duration = dur
 
         if is_sent:
             continue  # your own message is never the confirmation
@@ -790,13 +873,13 @@ def _find_candidate(backend, thread_meta: dict, now: datetime) -> dict | None:
         # Path 2 — recruiter states a future time and confirms it.
         if own_dt and own_dt > now and CONFIRM_PATTERNS.search(text):
             return {"via": "heuristic", "start": own_dt, "text": text,
-                    "meeting": extract_meeting(text), "msg": msg,
-                    "msg_id": msg_id, "sender": msg.get("From", "")}
+                    "meeting": extract_meeting(text), "msg": msg, "msg_id": msg_id,
+                    "sender": msg.get("From", ""), "duration_min": last_duration}
         # Path 3 — recruiter agrees to a previously-proposed future time.
         if last_proposed and AGREE_PATTERNS.search(text):
             return {"via": "heuristic", "start": last_proposed, "text": text,
-                    "meeting": extract_meeting(text), "msg": msg,
-                    "msg_id": msg_id, "sender": msg.get("From", "")}
+                    "meeting": extract_meeting(text), "msg": msg, "msg_id": msg_id,
+                    "sender": msg.get("From", ""), "duration_min": last_duration}
     return None
 
 
@@ -842,13 +925,24 @@ def scan(
         sender = t.get("from", "")
         snippet = t.get("snippet", "")
 
-        if already_on_calendar(thread_id, existing):
-            report["skipped"].append({"thread": thread_id, "reason": "duplicate", "subject": subject})
-            continue
-
         skip = is_skip(subject, snippet, sender)
-        if skip:
+        if skip == "cancelled":
+            # Pull any event we previously auto-created for this thread.
+            removed = _remove_thread_events(cal_token, cal_id, thread_id, existing, dry_run)
+            report["skipped"].append({"thread": thread_id, "reason": "cancelled",
+                                      "subject": subject, "removed_events": removed})
+            continue
+        if skip == "reschedule":
+            # Old slot is wrong now — drop our stale event, then fall through to
+            # re-book at the new time if the thread states one.
+            removed = _remove_thread_events(cal_token, cal_id, thread_id, existing, dry_run)
+            report.setdefault("rescheduled", []).append(
+                {"thread": thread_id, "subject": subject, "removed_events": removed})
+        elif skip:
             report["skipped"].append({"thread": thread_id, "reason": skip, "subject": subject})
+            continue
+        elif already_on_calendar(thread_id, existing):
+            report["skipped"].append({"thread": thread_id, "reason": "duplicate", "subject": subject})
             continue
 
         # Walk the whole thread (your replies included) to find a bookable
@@ -930,7 +1024,7 @@ def _build_event(candidate: dict, thread_id: str, sender: str, title: str) -> di
         location = ev.get("location", "") or meeting.get("join_url", "")
     else:
         start_dt = candidate["start"]
-        end_dt = start_dt + timedelta(minutes=45)
+        end_dt = start_dt + timedelta(minutes=candidate.get("duration_min") or 45)
         meeting = candidate.get("meeting", {})
         location = meeting.get("join_url", "")
     summary = title
