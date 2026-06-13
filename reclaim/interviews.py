@@ -140,6 +140,66 @@ def parse_ics(text: str) -> dict | None:
     return None
 
 
+# Outlook/Exchange write Windows timezone names into ICS TZIDs (e.g.
+# TZID="Mountain Standard Time") rather than IANA names (America/Denver).
+# ZoneInfo only knows IANA, so without this map every Outlook invite from a
+# non-Eastern sender silently fell back to the local zone and landed on the
+# calendar at the wrong hour. Subset of the CLDR windowsZones mapping covering
+# the zones our senders actually use.
+_WINDOWS_TZ = {
+    "Dateline Standard Time": "Etc/GMT+12",
+    "Hawaiian Standard Time": "Pacific/Honolulu",
+    "Alaskan Standard Time": "America/Anchorage",
+    "Pacific Standard Time": "America/Los_Angeles",
+    "Pacific Standard Time (Mexico)": "America/Tijuana",
+    "US Mountain Standard Time": "America/Phoenix",
+    "Mountain Standard Time": "America/Denver",
+    "Mountain Standard Time (Mexico)": "America/Chihuahua",
+    "Central Standard Time": "America/Chicago",
+    "Central Standard Time (Mexico)": "America/Mexico_City",
+    "Canada Central Standard Time": "America/Regina",
+    "Eastern Standard Time": "America/New_York",
+    "US Eastern Standard Time": "America/Indiana/Indianapolis",
+    "Atlantic Standard Time": "America/Halifax",
+    "UTC": "UTC",
+    "GMT Standard Time": "Europe/London",
+    "Greenwich Standard Time": "Atlantic/Reykjavik",
+    "W. Europe Standard Time": "Europe/Berlin",
+    "Central Europe Standard Time": "Europe/Budapest",
+    "Central European Standard Time": "Europe/Warsaw",
+    "Romance Standard Time": "Europe/Paris",
+    "GTB Standard Time": "Europe/Bucharest",
+    "India Standard Time": "Asia/Kolkata",
+    "China Standard Time": "Asia/Shanghai",
+    "Singapore Standard Time": "Asia/Singapore",
+    "Tokyo Standard Time": "Asia/Tokyo",
+    "Korea Standard Time": "Asia/Seoul",
+    "AUS Eastern Standard Time": "Australia/Sydney",
+    "New Zealand Standard Time": "Pacific/Auckland",
+}
+
+
+def _resolve_tzid(tzid: str):
+    """Resolve an ICS TZID to a tzinfo, defaulting to local on failure.
+
+    Handles IANA names directly, Outlook's Windows zone names via a lookup,
+    and the surrounding quotes Outlook adds (TZID="Mountain Standard Time")."""
+    name = tzid.strip().strip('"').strip()
+    if not name:
+        return DEFAULT_TZ
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        pass
+    mapped = _WINDOWS_TZ.get(name)
+    if mapped:
+        try:
+            return ZoneInfo(mapped)
+        except Exception:
+            pass
+    return DEFAULT_TZ
+
+
 def _parse_ics_dt(line: str) -> datetime | None:
     """Parse 'DTSTART:20260519T150000Z' or 'DTSTART;TZID=America/New_York:20260519T110000'."""
     header, _, value = line.partition(":")
@@ -157,10 +217,7 @@ def _parse_ics_dt(line: str) -> datetime | None:
         else:
             naive = datetime.strptime(value, "%Y%m%d")
         if tzid:
-            try:
-                return naive.replace(tzinfo=ZoneInfo(tzid))
-            except Exception:
-                return naive.replace(tzinfo=DEFAULT_TZ)
+            return naive.replace(tzinfo=_resolve_tzid(tzid))
         return naive.replace(tzinfo=DEFAULT_TZ)
     except ValueError:
         return None
