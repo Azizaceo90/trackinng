@@ -68,7 +68,14 @@ CONFIRM_PATTERNS = re.compile(
     r"\b(confirm(ed|ation)?|you('re| are) all set|"
     r"your interview is|see you (on|at)|"
     r"this email is a confirmation|"
-    r"interview details|booking is confirmed)\b",
+    r"interview details|booking is confirmed|"
+    # Phone-screen phrasing — recruiters confirm a call without an invite.
+    r"call added to|added (our|your|the) call|"
+    r"have (our|your|the) call (added|set|scheduled)|"
+    r"(i'?ll|i will) (be )?call(ing)? you|(i'?ll|i will) be calling|"
+    r"call(ing)? you (from|at)|"
+    r"look(ing)? forward to (our|the|your) (call|chat)|"
+    r"(our|your) (call|chat|phone screen|interview) is (set|scheduled|confirmed))\b",
     re.IGNORECASE,
 )
 ASYNC_DOMAINS = {"hireflix.com", "sparkhire.com", "vidcruiter.com", "spark.hire"}
@@ -280,8 +287,15 @@ _DATE_RE = re.compile(
     re.IGNORECASE,
 )
 _TIME_RE = re.compile(
-    r"\b(?P<hour>\d{1,2})(?::(?P<minute>\d{2}))?\s*(?P<ampm>am|pm|AM|PM)"
+    # Minutes may be separated by ":" or "." — recruiters write "2.30pm".
+    r"\b(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?\s*(?P<ampm>am|pm|AM|PM)"
     r"(?:\s*(?P<tz>EST|EDT|CST|CDT|MST|MDT|PST|PDT|ET|CT|MT|PT|UTC))?",
+)
+# Numeric M/D or M/D/Y dates ("6/11", "06/11/2026") — phone-screen confirmations
+# rarely spell the month out. Month 1-12 / day 1-31 to avoid matching ratios.
+_NUMERIC_DATE_RE = re.compile(
+    r"\b(?P<nmonth>1[0-2]|0?[1-9])/(?P<nday>3[01]|[12]\d|0?[1-9])"
+    r"(?:/(?P<nyear>\d{4}|\d{2}))?\b"
 )
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
@@ -314,20 +328,42 @@ def _tzinfo_from_abbrev(abbrev: str | None):
         return DEFAULT_TZ
 
 
+def _extract_date(text: str, default_year: int) -> tuple[int, int, int] | None:
+    """Pull (year, month, day) from a spelled-out or numeric date, or None."""
+    m = _DATE_RE.search(text)
+    if m:
+        month = _MONTHS.get(m.group("month").lower()[:3])
+        if not month:
+            return None
+        day = int(m.group("day"))
+        year = int(m.group("year")) if m.group("year") else default_year
+        return year, month, day
+    n = _NUMERIC_DATE_RE.search(text)
+    if n:
+        month = int(n.group("nmonth"))
+        day = int(n.group("nday"))
+        if n.group("nyear"):
+            y = int(n.group("nyear"))
+            year = y + 2000 if y < 100 else y
+        else:
+            year = default_year
+        return year, month, day
+    return None
+
+
 def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
     """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases.
 
-    Honors a stated timezone (EST/PST/CT/…); falls back to the local default
-    zone when the email gives a bare time with no zone."""
-    date_m = _DATE_RE.search(text)
+    Handles spelled-out ("May 19th") and numeric ("6/11") dates, and ":"/"."
+    minute separators. Honors a stated timezone (EST/PST/CT/…); falls back to
+    the local default zone when the email gives a bare time with no zone."""
     time_m = _TIME_RE.search(text)
-    if not (date_m and time_m):
+    if not time_m:
         return None
-    month = _MONTHS.get(date_m.group("month").lower()[:3])
-    if not month:
+    date = _extract_date(text, default_year)
+    if not date:
         return None
-    day = int(date_m.group("day"))
-    year = int(date_m.group("year")) if date_m.group("year") else default_year
+    year, month, day = date
     hour = int(time_m.group("hour"))
     minute = int(time_m.group("minute") or 0)
     ampm = time_m.group("ampm").lower()
