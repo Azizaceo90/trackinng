@@ -30,6 +30,7 @@ import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from email.message import Message
+from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
 from reclaim import calendar_fetch
@@ -68,7 +69,27 @@ CONFIRM_PATTERNS = re.compile(
     r"\b(confirm(ed|ation)?|you('re| are) all set|"
     r"your interview is|see you (on|at)|"
     r"this email is a confirmation|"
-    r"interview details|booking is confirmed)\b",
+    r"interview details|booking is confirmed|"
+    # Phone-screen phrasing — recruiters confirm a call without an invite.
+    r"call added to|added (our|your|the) call|"
+    r"have (our|your|the) call (added|set|scheduled)|"
+    r"(i'?ll|i will) (be )?call(ing)? you|(i'?ll|i will) be calling|"
+    r"call(ing)? you (from|at)|"
+    r"look(ing)? forward to (our|the|your) (call|chat)|"
+    r"(our|your) (call|chat|phone screen|interview) is (set|scheduled|confirmed))\b",
+    re.IGNORECASE,
+)
+# Recruiter *agreeing* to a time you proposed earlier in the thread. Distinct
+# from CONFIRM_PATTERNS: there's usually no time in the agreeing message itself
+# ("I can do that! I'll call you then"), so it's only acted on when an earlier
+# message supplied a concrete future time.
+AGREE_PATTERNS = re.compile(
+    r"\b(i can do that|that works|works for me|that time works|"
+    r"sounds (good|great|perfect)|that('?s| is) (great|perfect|fine)|"
+    r"see you (then|on|at)|talk (to|with) you then|"
+    r"looking forward to (it|speaking|chatting|our (call|chat))|"
+    r"let'?s do (it|that|mon|tue|wed|thu|fri)|"
+    r"(i'?ll|i will) (be )?(call(ing)? you|give you a call))\b",
     re.IGNORECASE,
 )
 ASYNC_DOMAINS = {"hireflix.com", "sparkhire.com", "vidcruiter.com", "spark.hire"}
@@ -280,11 +301,57 @@ _DATE_RE = re.compile(
     re.IGNORECASE,
 )
 _TIME_RE = re.compile(
-    r"\b(?P<hour>\d{1,2})(?::(?P<minute>\d{2}))?\s*(?P<ampm>am|pm|AM|PM)"
+    # Minutes may be separated by ":" or "." — recruiters write "2.30pm".
+    r"\b(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?\s*(?P<ampm>am|pm|AM|PM)"
     r"(?:\s*(?P<tz>EST|EDT|CST|CDT|MST|MDT|PST|PDT|ET|CT|MT|PT|UTC))?",
+)
+# Numeric M/D or M/D/Y dates ("6/11", "06/11/2026") — phone-screen confirmations
+# rarely spell the month out. Month 1-12 / day 1-31 to avoid matching ratios.
+_NUMERIC_DATE_RE = re.compile(
+    r"\b(?P<nmonth>1[0-2]|0?[1-9])/(?P<nday>3[01]|[12]\d|0?[1-9])"
+    r"(?:/(?P<nyear>\d{4}|\d{2}))?\b"
 )
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+
+_WEEKDAYS = {"monday": 0, "mon": 0, "tuesday": 1, "tue": 1, "tues": 1,
+             "wednesday": 2, "wed": 2, "thursday": 3, "thu": 3, "thur": 3,
+             "thurs": 3, "friday": 4, "fri": 4, "saturday": 5, "sat": 5,
+             "sunday": 6, "sun": 6}
+# "(next|this) Monday" / "Monday next week" / "Tuesday" — relative to the email's
+# own date. Captures an optional leading modifier and an optional "next week".
+_REL_WEEKDAY_RE = re.compile(
+    r"\b(?:(?P<pre>this|next)\s+)?"
+    r"(?P<wd>mon|tues?|wed|thurs?|fri|sat|sun)[a-z]*"
+    r"(?P<post>\s+next\s+week)?\b",
+    re.IGNORECASE,
+)
+
+
+def _relative_date(text: str, ref: datetime) -> tuple[int, int, int] | None:
+    """Resolve 'today' / 'tomorrow' / '(next) <weekday> (next week)' against the
+    email's own send date `ref`. Returns (year, month, day) or None."""
+    low = text.lower()
+    if re.search(r"\btomorrow\b", low):
+        d = ref + timedelta(days=1)
+        return d.year, d.month, d.day
+    m = _REL_WEEKDAY_RE.search(text)
+    if m:
+        target = _WEEKDAYS.get(m.group("wd").lower())
+        if target is None:
+            return None
+        next_week = bool(m.group("post")) or (m.group("pre") or "").lower() == "next"
+        if next_week:
+            # Monday of next calendar week, then offset to the named weekday.
+            monday_next = ref - timedelta(days=ref.weekday()) + timedelta(days=7)
+            d = monday_next + timedelta(days=target)
+        else:
+            days_ahead = (target - ref.weekday()) % 7
+            d = ref + timedelta(days=days_ahead)
+        return d.year, d.month, d.day
+    if re.search(r"\btoday\b", low):
+        return ref.year, ref.month, ref.day
+    return None
 
 # Map the timezone abbreviation captured by _TIME_RE to an IANA zone. We use
 # the IANA zone (not a fixed offset) so ZoneInfo applies the correct DST rule
@@ -314,20 +381,48 @@ def _tzinfo_from_abbrev(abbrev: str | None):
         return DEFAULT_TZ
 
 
-def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
+def _extract_date(text: str, default_year: int,
+                  ref_date: datetime | None = None) -> tuple[int, int, int] | None:
+    """Pull (year, month, day) from a spelled-out, numeric, or (when ref_date is
+    given) relative date. Returns None if no date is found."""
+    m = _DATE_RE.search(text)
+    if m:
+        month = _MONTHS.get(m.group("month").lower()[:3])
+        if not month:
+            return None
+        day = int(m.group("day"))
+        year = int(m.group("year")) if m.group("year") else default_year
+        return year, month, day
+    n = _NUMERIC_DATE_RE.search(text)
+    if n:
+        month = int(n.group("nmonth"))
+        day = int(n.group("nday"))
+        if n.group("nyear"):
+            y = int(n.group("nyear"))
+            year = y + 2000 if y < 100 else y
+        else:
+            year = default_year
+        return year, month, day
+    if ref_date is not None:
+        return _relative_date(text, ref_date)
+    return None
+
+
+def parse_datetime_from_text(text: str, default_year: int,
+                             ref_date: datetime | None = None) -> datetime | None:
     """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases.
 
-    Honors a stated timezone (EST/PST/CT/…); falls back to the local default
-    zone when the email gives a bare time with no zone."""
-    date_m = _DATE_RE.search(text)
+    Handles spelled-out ("May 19th"), numeric ("6/11"), and — when ref_date (the
+    email's send time) is supplied — relative ("Monday next week", "tomorrow")
+    dates, plus ":"/"." minute separators. Honors a stated timezone (EST/PST/…);
+    falls back to the local default zone when no zone is given."""
     time_m = _TIME_RE.search(text)
-    if not (date_m and time_m):
+    if not time_m:
         return None
-    month = _MONTHS.get(date_m.group("month").lower()[:3])
-    if not month:
+    date = _extract_date(text, default_year, ref_date)
+    if not date:
         return None
-    day = int(date_m.group("day"))
-    year = int(date_m.group("year")) if date_m.group("year") else default_year
+    year, month, day = date
     hour = int(time_m.group("hour"))
     minute = int(time_m.group("minute") or 0)
     ampm = time_m.group("ampm").lower()
@@ -588,16 +683,15 @@ class _ApiGmailBackend:
     def search(self, query: str, max_results: int) -> list[dict]:
         return gmail_search(query, self.token, max_results=max_results)
 
-    def inbound_messages(self, thread_meta: dict) -> list[tuple[Message, str]]:
+    def thread_messages(self, thread_meta: dict) -> list[tuple[Message, str, bool]]:
         thread = _api_get(
             f"/users/me/threads/{thread_meta['thread_id']}", self.token,
             {"format": "minimal"},
         )
-        out: list[tuple[Message, str]] = []
+        out: list[tuple[Message, str, bool]] = []
         for m in thread.get("messages", []):
-            if "SENT" in (m.get("labelIds") or []):
-                continue
-            out.append((fetch_raw_message(m["id"], self.token), m["id"]))
+            is_sent = "SENT" in (m.get("labelIds") or [])
+            out.append((fetch_raw_message(m["id"], self.token), m["id"], is_sent))
         return out
 
     def ics_text(self, msg: Message, msg_id: str) -> str | None:
@@ -621,12 +715,11 @@ class _ImapGmailBackend:
             self._threads[t["thread_id"]] = t
         return threads
 
-    def inbound_messages(self, thread_meta: dict) -> list[tuple[Message, str]]:
+    def thread_messages(self, thread_meta: dict) -> list[tuple[Message, str, bool]]:
         t = self._threads.get(thread_meta["thread_id"], thread_meta)
         return [
-            (m["message"], str(m["uid"]))
+            (m["message"], str(m["uid"]), bool(m["is_sent"]))
             for m in t.get("_messages", [])
-            if not m["is_sent"]
         ]
 
     def ics_text(self, msg: Message, msg_id: str) -> str | None:
@@ -643,6 +736,68 @@ def _make_gmail_backend(account: str):
     if gmail_imap.available(account):
         return _ImapGmailBackend(account)
     return _ApiGmailBackend(account)
+
+
+def _message_datetime(msg: Message) -> datetime | None:
+    """The message's send time in the local zone — anchor for relative dates."""
+    raw = msg.get("Date")
+    if not raw:
+        return None
+    try:
+        dt = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return None
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=DEFAULT_TZ)
+    return dt.astimezone(DEFAULT_TZ)
+
+
+def _find_candidate(backend, thread_meta: dict, now: datetime) -> dict | None:
+    """Walk a thread chronologically and return the bookable candidate, or None.
+
+    Three ways an interview gets booked:
+      1. ICS invite (inbound) with a future start — authoritative.
+      2. Recruiter's own message states a future time AND confirms (Carlie).
+      3. Recruiter agrees to a time proposed earlier in the thread — often in
+         your reply (Josh). A time from your sent mail is only ever promoted
+         once a later inbound message agrees, which keeps unconfirmed proposals
+         from creating phantom events.
+    """
+    last_proposed: datetime | None = None  # newest future time seen in-thread
+    for msg, msg_id, is_sent in backend.thread_messages(thread_meta):
+        if not is_sent:
+            ics_text = backend.ics_text(msg, msg_id)
+            if ics_text:
+                ev = parse_ics(ics_text)
+                if ev and ev.get("dtstart") and ev["dtstart"] > now:
+                    return {"via": "ics", "event": ev, "msg": msg, "msg_id": msg_id}
+
+        plain, html = message_bodies(msg)
+        text = plain or (html_to_text(html) if html else "")
+        if not text:
+            continue
+        own_dt = parse_datetime_from_text(
+            text, default_year=now.year, ref_date=_message_datetime(msg)
+        )
+        if own_dt and own_dt > now:
+            last_proposed = own_dt
+
+        if is_sent:
+            continue  # your own message is never the confirmation
+
+        # Path 2 — recruiter states a future time and confirms it.
+        if own_dt and own_dt > now and CONFIRM_PATTERNS.search(text):
+            return {"via": "heuristic", "start": own_dt, "text": text,
+                    "meeting": extract_meeting(text), "msg": msg,
+                    "msg_id": msg_id, "sender": msg.get("From", "")}
+        # Path 3 — recruiter agrees to a previously-proposed future time.
+        if last_proposed and AGREE_PATTERNS.search(text):
+            return {"via": "heuristic", "start": last_proposed, "text": text,
+                    "meeting": extract_meeting(text), "msg": msg,
+                    "msg_id": msg_id, "sender": msg.get("From", "")}
+    return None
 
 
 def scan(
@@ -696,33 +851,10 @@ def scan(
             report["skipped"].append({"thread": thread_id, "reason": skip, "subject": subject})
             continue
 
-        # Walk every message in the thread, INBOUND only. Skip anything
-        # you sent — quoted proposed times in your own replies were
-        # tripping the heuristic and creating phantom events.
-        candidate = None
-        for msg, msg_id in backend.inbound_messages(t):
-            ics_text = backend.ics_text(msg, msg_id)
-            if ics_text:
-                ev = parse_ics(ics_text)
-                if ev and ev.get("dtstart") and ev["dtstart"] > now:
-                    candidate = {"via": "ics", "event": ev, "msg": msg, "msg_id": msg_id}
-                    break
-            # Heuristic fallback. Require confirmation language in the SAME
-            # message that contains a parseable future date — otherwise we
-            # pick up "what about May 22?" style suggestions from a recruiter
-            # whose interview hasn't been booked yet.
-            if candidate is None:
-                plain, html = message_bodies(msg)
-                text = plain or (html_to_text(html) if html else "")
-                if not text or not CONFIRM_PATTERNS.search(text):
-                    continue
-                dt = parse_datetime_from_text(text, default_year=now.year)
-                if dt and dt > now:
-                    meeting = extract_meeting(text)
-                    candidate = {"via": "heuristic", "start": dt,
-                                 "text": text, "meeting": meeting,
-                                 "msg": msg, "msg_id": msg_id,
-                                 "sender": msg.get("From", "")}
+        # Walk the whole thread (your replies included) to find a bookable
+        # interview: an ICS invite, a recruiter-stated time, or a recruiter
+        # agreeing to a time proposed earlier in the thread.
+        candidate = _find_candidate(backend, t, now)
 
         if not candidate:
             report["skipped"].append({"thread": thread_id, "reason": "no_future_time",
