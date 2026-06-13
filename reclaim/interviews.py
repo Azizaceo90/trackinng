@@ -379,6 +379,69 @@ def conflicts_with_existing(start_dt: datetime, existing: list[dict],
     return False
 
 
+_URL_RE = re.compile(r'https?://[^\s<>"\')]+', re.IGNORECASE)
+
+
+def _normalize_meeting_url(url: str) -> str:
+    """Reduce a meeting URL to a stable key identifying the meeting room.
+
+    Different copies of the same invite (Google's auto-added attendee event vs.
+    our ingest) carry the same join link but may differ in tracking params, so
+    we key on the provider's unique meeting id rather than the raw URL."""
+    u = url.lower().rstrip('.,;)>"\'')
+    m = re.search(r'[?&]mtid=([a-z0-9]+)', u)          # Webex
+    if m:
+        return f"webex:{m.group(1)}"
+    m = re.search(r'zoom\.us/(?:j|w|wc)/(\d+)', u)      # Zoom
+    if m:
+        return f"zoom:{m.group(1)}"
+    m = re.search(r'meet\.google\.com/([a-z0-9-]+)', u)  # Google Meet
+    if m:
+        return f"meet:{m.group(1)}"
+    m = re.search(r'teams\.microsoft\.com/l/meetup-join/([^?\s]+)', u)  # Teams
+    if m:
+        return f"teams:{m.group(1)}"
+    # Fallback: host + path, query/fragment dropped.
+    m = re.match(r'https?://([^/]+)(/[^?#\s]*)?', u)
+    if m:
+        return f"{m.group(1)}{(m.group(2) or '').rstrip('/')}"
+    return u
+
+
+def _meeting_keys(text: str) -> set[str]:
+    """Extract comparable meeting-room keys from any free text / URL blob."""
+    return {
+        k for k in (_normalize_meeting_url(m.group(0)) for m in _URL_RE.finditer(text or ""))
+        if k
+    }
+
+
+def meeting_link_on_calendar(candidate_text: str, existing: list[dict]) -> bool:
+    """Skip interviews whose meeting link already lives on the calendar.
+
+    Google auto-adds events you're an attendee of, so the real invite is often
+    already present under the organizer's title and (pre-fix) a different time —
+    which slipped past the thread-id and time-proximity dedupe. Matching on the
+    Webex/Zoom/Meet/Teams meeting id catches those duplicates."""
+    keys = _meeting_keys(candidate_text)
+    if not keys:
+        return False
+    for e in existing:
+        hay = f"{e.get('location', '') or ''}\n{e.get('description', '') or ''}"
+        if keys & _meeting_keys(hay):
+            return True
+    return False
+
+
+def _candidate_link_text(candidate: dict) -> str:
+    """Gather everything on a candidate that might carry a meeting URL."""
+    if candidate["via"] == "ics":
+        ev = candidate["event"]
+        return f"{ev.get('location', '') or ''}\n{ev.get('description', '') or ''}"
+    meeting = candidate.get("meeting", {}) or {}
+    return f"{meeting.get('join_url', '') or ''}\n{candidate.get('text', '') or ''}"
+
+
 def _company_from_domain(domain: str) -> str | None:
     """Pick a likely company name out of an email domain, or None."""
     parts = domain.lower().split(".")
@@ -668,6 +731,16 @@ def scan(
 
         cand_start = (candidate["event"]["dtstart"] if candidate["via"] == "ics"
                       else candidate["start"])
+
+        # Skip if Google already auto-added this same meeting (matched by the
+        # Webex/Zoom/Meet/Teams join link) under the organizer's own invite.
+        if meeting_link_on_calendar(_candidate_link_text(candidate), existing):
+            report["skipped"].append({"thread": thread_id,
+                                      "reason": "duplicate_meeting_link",
+                                      "subject": subject,
+                                      "start": cand_start.isoformat()})
+            continue
+
         if conflicts_with_existing(cand_start, existing):
             report["skipped"].append({"thread": thread_id,
                                       "reason": "time_conflict_with_existing_interview",
