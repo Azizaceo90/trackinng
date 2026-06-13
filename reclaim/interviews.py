@@ -229,9 +229,39 @@ _TIME_RE = re.compile(
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
 
+# Map the timezone abbreviation captured by _TIME_RE to an IANA zone. We use
+# the IANA zone (not a fixed offset) so ZoneInfo applies the correct DST rule
+# for the interview's actual date — e.g. "ET" in June resolves to EDT (-4),
+# in January to EST (-5). People write "EST"/"PST" loosely year-round, so the
+# standard/daylight spelling is treated as a hint for the region, not a literal
+# offset.
+_TZ_ABBREV = {
+    "ET": "America/New_York", "EST": "America/New_York", "EDT": "America/New_York",
+    "CT": "America/Chicago", "CST": "America/Chicago", "CDT": "America/Chicago",
+    "MT": "America/Denver", "MST": "America/Denver", "MDT": "America/Denver",
+    "PT": "America/Los_Angeles", "PST": "America/Los_Angeles", "PDT": "America/Los_Angeles",
+    "UTC": "UTC",
+}
+
+
+def _tzinfo_from_abbrev(abbrev: str | None):
+    """Resolve a captured tz abbreviation to a tzinfo, defaulting to local."""
+    if not abbrev:
+        return DEFAULT_TZ
+    zone = _TZ_ABBREV.get(abbrev.upper())
+    if not zone:
+        return DEFAULT_TZ
+    try:
+        return ZoneInfo(zone)
+    except Exception:
+        return DEFAULT_TZ
+
 
 def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
-    """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases."""
+    """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases.
+
+    Honors a stated timezone (EST/PST/CT/…); falls back to the local default
+    zone when the email gives a bare time with no zone."""
     date_m = _DATE_RE.search(text)
     time_m = _TIME_RE.search(text)
     if not (date_m and time_m):
@@ -248,8 +278,9 @@ def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
         hour += 12
     if ampm == "am" and hour == 12:
         hour = 0
+    tzinfo = _tzinfo_from_abbrev(time_m.group("tz"))
     try:
-        return datetime(year, month, day, hour, minute, tzinfo=DEFAULT_TZ)
+        return datetime(year, month, day, hour, minute, tzinfo=tzinfo)
     except ValueError:
         return None
 
