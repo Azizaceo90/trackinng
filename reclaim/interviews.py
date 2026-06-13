@@ -140,6 +140,66 @@ def parse_ics(text: str) -> dict | None:
     return None
 
 
+# Outlook/Exchange write Windows timezone names into ICS TZIDs (e.g.
+# TZID="Mountain Standard Time") rather than IANA names (America/Denver).
+# ZoneInfo only knows IANA, so without this map every Outlook invite from a
+# non-Eastern sender silently fell back to the local zone and landed on the
+# calendar at the wrong hour. Subset of the CLDR windowsZones mapping covering
+# the zones our senders actually use.
+_WINDOWS_TZ = {
+    "Dateline Standard Time": "Etc/GMT+12",
+    "Hawaiian Standard Time": "Pacific/Honolulu",
+    "Alaskan Standard Time": "America/Anchorage",
+    "Pacific Standard Time": "America/Los_Angeles",
+    "Pacific Standard Time (Mexico)": "America/Tijuana",
+    "US Mountain Standard Time": "America/Phoenix",
+    "Mountain Standard Time": "America/Denver",
+    "Mountain Standard Time (Mexico)": "America/Chihuahua",
+    "Central Standard Time": "America/Chicago",
+    "Central Standard Time (Mexico)": "America/Mexico_City",
+    "Canada Central Standard Time": "America/Regina",
+    "Eastern Standard Time": "America/New_York",
+    "US Eastern Standard Time": "America/Indiana/Indianapolis",
+    "Atlantic Standard Time": "America/Halifax",
+    "UTC": "UTC",
+    "GMT Standard Time": "Europe/London",
+    "Greenwich Standard Time": "Atlantic/Reykjavik",
+    "W. Europe Standard Time": "Europe/Berlin",
+    "Central Europe Standard Time": "Europe/Budapest",
+    "Central European Standard Time": "Europe/Warsaw",
+    "Romance Standard Time": "Europe/Paris",
+    "GTB Standard Time": "Europe/Bucharest",
+    "India Standard Time": "Asia/Kolkata",
+    "China Standard Time": "Asia/Shanghai",
+    "Singapore Standard Time": "Asia/Singapore",
+    "Tokyo Standard Time": "Asia/Tokyo",
+    "Korea Standard Time": "Asia/Seoul",
+    "AUS Eastern Standard Time": "Australia/Sydney",
+    "New Zealand Standard Time": "Pacific/Auckland",
+}
+
+
+def _resolve_tzid(tzid: str):
+    """Resolve an ICS TZID to a tzinfo, defaulting to local on failure.
+
+    Handles IANA names directly, Outlook's Windows zone names via a lookup,
+    and the surrounding quotes Outlook adds (TZID="Mountain Standard Time")."""
+    name = tzid.strip().strip('"').strip()
+    if not name:
+        return DEFAULT_TZ
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        pass
+    mapped = _WINDOWS_TZ.get(name)
+    if mapped:
+        try:
+            return ZoneInfo(mapped)
+        except Exception:
+            pass
+    return DEFAULT_TZ
+
+
 def _parse_ics_dt(line: str) -> datetime | None:
     """Parse 'DTSTART:20260519T150000Z' or 'DTSTART;TZID=America/New_York:20260519T110000'."""
     header, _, value = line.partition(":")
@@ -157,10 +217,7 @@ def _parse_ics_dt(line: str) -> datetime | None:
         else:
             naive = datetime.strptime(value, "%Y%m%d")
         if tzid:
-            try:
-                return naive.replace(tzinfo=ZoneInfo(tzid))
-            except Exception:
-                return naive.replace(tzinfo=DEFAULT_TZ)
+            return naive.replace(tzinfo=_resolve_tzid(tzid))
         return naive.replace(tzinfo=DEFAULT_TZ)
     except ValueError:
         return None
@@ -229,9 +286,39 @@ _TIME_RE = re.compile(
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
 
+# Map the timezone abbreviation captured by _TIME_RE to an IANA zone. We use
+# the IANA zone (not a fixed offset) so ZoneInfo applies the correct DST rule
+# for the interview's actual date — e.g. "ET" in June resolves to EDT (-4),
+# in January to EST (-5). People write "EST"/"PST" loosely year-round, so the
+# standard/daylight spelling is treated as a hint for the region, not a literal
+# offset.
+_TZ_ABBREV = {
+    "ET": "America/New_York", "EST": "America/New_York", "EDT": "America/New_York",
+    "CT": "America/Chicago", "CST": "America/Chicago", "CDT": "America/Chicago",
+    "MT": "America/Denver", "MST": "America/Denver", "MDT": "America/Denver",
+    "PT": "America/Los_Angeles", "PST": "America/Los_Angeles", "PDT": "America/Los_Angeles",
+    "UTC": "UTC",
+}
+
+
+def _tzinfo_from_abbrev(abbrev: str | None):
+    """Resolve a captured tz abbreviation to a tzinfo, defaulting to local."""
+    if not abbrev:
+        return DEFAULT_TZ
+    zone = _TZ_ABBREV.get(abbrev.upper())
+    if not zone:
+        return DEFAULT_TZ
+    try:
+        return ZoneInfo(zone)
+    except Exception:
+        return DEFAULT_TZ
+
 
 def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
-    """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases."""
+    """Best-effort parse of 'Tuesday May 19th at 11am EST' style phrases.
+
+    Honors a stated timezone (EST/PST/CT/…); falls back to the local default
+    zone when the email gives a bare time with no zone."""
     date_m = _DATE_RE.search(text)
     time_m = _TIME_RE.search(text)
     if not (date_m and time_m):
@@ -248,8 +335,9 @@ def parse_datetime_from_text(text: str, default_year: int) -> datetime | None:
         hour += 12
     if ampm == "am" and hour == 12:
         hour = 0
+    tzinfo = _tzinfo_from_abbrev(time_m.group("tz"))
     try:
-        return datetime(year, month, day, hour, minute, tzinfo=DEFAULT_TZ)
+        return datetime(year, month, day, hour, minute, tzinfo=tzinfo)
     except ValueError:
         return None
 
@@ -289,6 +377,69 @@ def conflicts_with_existing(start_dt: datetime, existing: list[dict],
         if abs(existing_dt - start_dt) <= tol:
             return True
     return False
+
+
+_URL_RE = re.compile(r'https?://[^\s<>"\')]+', re.IGNORECASE)
+
+
+def _normalize_meeting_url(url: str) -> str:
+    """Reduce a meeting URL to a stable key identifying the meeting room.
+
+    Different copies of the same invite (Google's auto-added attendee event vs.
+    our ingest) carry the same join link but may differ in tracking params, so
+    we key on the provider's unique meeting id rather than the raw URL."""
+    u = url.lower().rstrip('.,;)>"\'')
+    m = re.search(r'[?&]mtid=([a-z0-9]+)', u)          # Webex
+    if m:
+        return f"webex:{m.group(1)}"
+    m = re.search(r'zoom\.us/(?:j|w|wc)/(\d+)', u)      # Zoom
+    if m:
+        return f"zoom:{m.group(1)}"
+    m = re.search(r'meet\.google\.com/([a-z0-9-]+)', u)  # Google Meet
+    if m:
+        return f"meet:{m.group(1)}"
+    m = re.search(r'teams\.microsoft\.com/l/meetup-join/([^?\s]+)', u)  # Teams
+    if m:
+        return f"teams:{m.group(1)}"
+    # Fallback: host + path, query/fragment dropped.
+    m = re.match(r'https?://([^/]+)(/[^?#\s]*)?', u)
+    if m:
+        return f"{m.group(1)}{(m.group(2) or '').rstrip('/')}"
+    return u
+
+
+def _meeting_keys(text: str) -> set[str]:
+    """Extract comparable meeting-room keys from any free text / URL blob."""
+    return {
+        k for k in (_normalize_meeting_url(m.group(0)) for m in _URL_RE.finditer(text or ""))
+        if k
+    }
+
+
+def meeting_link_on_calendar(candidate_text: str, existing: list[dict]) -> bool:
+    """Skip interviews whose meeting link already lives on the calendar.
+
+    Google auto-adds events you're an attendee of, so the real invite is often
+    already present under the organizer's title and (pre-fix) a different time —
+    which slipped past the thread-id and time-proximity dedupe. Matching on the
+    Webex/Zoom/Meet/Teams meeting id catches those duplicates."""
+    keys = _meeting_keys(candidate_text)
+    if not keys:
+        return False
+    for e in existing:
+        hay = f"{e.get('location', '') or ''}\n{e.get('description', '') or ''}"
+        if keys & _meeting_keys(hay):
+            return True
+    return False
+
+
+def _candidate_link_text(candidate: dict) -> str:
+    """Gather everything on a candidate that might carry a meeting URL."""
+    if candidate["via"] == "ics":
+        ev = candidate["event"]
+        return f"{ev.get('location', '') or ''}\n{ev.get('description', '') or ''}"
+    meeting = candidate.get("meeting", {}) or {}
+    return f"{meeting.get('join_url', '') or ''}\n{candidate.get('text', '') or ''}"
 
 
 def _company_from_domain(domain: str) -> str | None:
@@ -580,6 +731,16 @@ def scan(
 
         cand_start = (candidate["event"]["dtstart"] if candidate["via"] == "ics"
                       else candidate["start"])
+
+        # Skip if Google already auto-added this same meeting (matched by the
+        # Webex/Zoom/Meet/Teams join link) under the organizer's own invite.
+        if meeting_link_on_calendar(_candidate_link_text(candidate), existing):
+            report["skipped"].append({"thread": thread_id,
+                                      "reason": "duplicate_meeting_link",
+                                      "subject": subject,
+                                      "start": cand_start.isoformat()})
+            continue
+
         if conflicts_with_existing(cand_start, existing):
             report["skipped"].append({"thread": thread_id,
                                       "reason": "time_conflict_with_existing_interview",
